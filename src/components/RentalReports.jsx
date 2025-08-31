@@ -240,17 +240,17 @@ const RentalReports = ({ user, db: propDb }) => {
           const rental = {
             id: booking.id,
             transactionId: booking.bookingId || booking.id.substring(0, 8),
-            customerName: booking.name || 'N/A',
-            customerEmail: booking.email || 'N/A',
-            customerPhone: booking.contactNumber || 'N/A',
-            vehicleBrand: booking.vehicleBrand || 'N/A',
-            vehicleModel: booking.vehicleModel || 'N/A',
-            plateNumber: 'N/A', // Not in booking structure
-            businessName: booking.ownerName || 'N/A',
-            ownerBusinessName: booking.ownerName || 'N/A',
+            customerName: booking.name || '',
+            customerEmail: booking.email || '',
+            customerPhone: booking.contactNumber || '',
+            vehicleBrand: booking.vehicleBrand || '',
+            vehicleModel: booking.vehicleModel || '',
+            plateNumber: '', // Not in booking structure
+            businessName: booking.ownerName || '',
+            ownerBusinessName: booking.ownerName || '',
             totalAmount: booking.totalAmount || booking.price || booking.amount || booking.totalPrice || booking.rentalPrice || 0,
             status: booking.status || 'pending',
-            paymentStatus: 'N/A' // Not in booking structure
+            paymentStatus: '' // Not in booking structure
           };
           
           // Handle dates
@@ -359,17 +359,17 @@ const RentalReports = ({ user, db: propDb }) => {
         const rental = {
           id: booking.id,
           transactionId: booking.bookingId || booking.id.substring(0, 8),
-          customerName: booking.name || 'N/A',
-          customerEmail: booking.email || 'N/A',
-          customerPhone: booking.contactNumber || 'N/A',
-          vehicleBrand: booking.vehicleBrand || 'N/A',
-          vehicleModel: booking.vehicleModel || 'N/A',
-          plateNumber: 'N/A',
-          businessName: booking.ownerName || 'N/A',
-          ownerBusinessName: booking.ownerName || 'N/A',
+          customerName: booking.name || '',
+          customerEmail: booking.email || '',
+          customerPhone: booking.contactNumber || '',
+          vehicleBrand: booking.vehicleBrand || '',
+          vehicleModel: booking.vehicleModel || '',
+          plateNumber: '',
+          businessName: booking.ownerName || '',
+          ownerBusinessName: booking.ownerName || '',
           totalAmount: booking.totalAmount || booking.price || booking.amount || booking.totalPrice || booking.rentalPrice || 0,
           status: booking.status || 'pending',
-          paymentStatus: 'N/A'
+          paymentStatus: ''
         };
         
         if (booking.startDate) {
@@ -1050,7 +1050,7 @@ const RentalReports = ({ user, db: propDb }) => {
                                     {report.transactionId || `#${report.id.substring(0, 8)}`}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {report.createdAtFormatted || 'N/A'}
+                                    {report.createdAtFormatted || ''}
                                   </div>
                                 </div>
                               </div>
@@ -1063,7 +1063,7 @@ const RentalReports = ({ user, db: propDb }) => {
                                     {report.vehicleBrand} {report.vehicleModel}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {report.businessName || 'N/A'}
+                                    {report.businessName || ''}
                                   </div>
                                 </div>
                               </div>
@@ -1073,10 +1073,10 @@ const RentalReports = ({ user, db: propDb }) => {
                                 <User size={16} className="text-gray-400 mr-2" />
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
-                                    {report.customerName || 'N/A'}
+                                    {report.customerName || ''}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {report.customerEmail || report.customerPhone || 'N/A'}
+                                    {report.customerEmail || report.customerPhone || ''}
                                   </div>
                                 </div>
                               </div>
@@ -1086,10 +1086,10 @@ const RentalReports = ({ user, db: propDb }) => {
                                 <Calendar size={16} className="text-gray-400 mr-2" />
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
-                                    {report.startDateFormatted || 'N/A'}
+                                    {report.startDateFormatted || ''}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    to {report.endDateFormatted || 'N/A'}
+                                    to {report.endDateFormatted || ''}
                                   </div>
                                 </div>
                               </div>
@@ -1099,7 +1099,7 @@ const RentalReports = ({ user, db: propDb }) => {
                                 ₱{parseFloat(report.totalAmount || 0).toLocaleString()}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {report.paymentStatus || 'N/A'}
+                                {report.paymentStatus || ''}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1111,7 +1111,7 @@ const RentalReports = ({ user, db: propDb }) => {
                                   report.currentStatus === 'pending' ? 'bg-purple-100 text-purple-800' :
                                   report.currentStatus === 'accepted' ? 'bg-indigo-100 text-indigo-800' :
                                   'bg-gray-100 text-gray-800'}`}>
-                                {report.currentStatus || 'N/A'}
+                                {report.currentStatus || ''}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
