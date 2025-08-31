@@ -16,7 +16,6 @@ import {
   Check,
   Eye,
   Calendar,
-  DollarSign,
   Settings,
   User,
   Car,
@@ -32,6 +31,16 @@ import {
 
 // Import your Firebase storage instance
 import { storage } from '../firebase'; // Update this path to match your firebase config file location
+
+// Peso icon component
+const PesoIcon = ({ size = 18, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M6 4v16" />
+    <path d="M6 4h8a4 4 0 0 1 0 8H6" />
+    <line x1="3" y1="8" x2="15" y2="8" />
+    <line x1="3" y1="12" x2="15" y2="12" />
+  </svg>
+);
 
 const Cars = ({ user, db }) => {
   // State variables
@@ -937,7 +946,7 @@ const Cars = ({ user, db }) => {
       carType: 'Sedan',
       transmission: 'Automatic',
       fuelType: 'Gasoline',
-      status: 'Verified',
+      status: 'Available',
       description: '',
       carNumber: '',
       minRentalPeriod: '24',
@@ -1520,13 +1529,12 @@ const Cars = ({ user, db }) => {
                         
                         <div className="mt-2 flex items-center">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            car.status === 'Verified' ? 'bg-green-100 text-green-800' :
+                            car.status === 'Verified' ? 'bg-gray-100 text-black' :
                             car.status === 'Not Verified' ? 'bg-red-100 text-red-800' :
                             car.status === 'Rented' ? 'bg-yellow-100 text-yellow-800' :
                             car.status === 'Maintenance' ? 'bg-orange-100 text-orange-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {car.status === 'Verified' && <Shield size={12} className="mr-1" />}
                             {car.status === 'Not Verified' && <AlertTriangle size={12} className="mr-1" />}
                             {car.status}
                           </span>
@@ -1898,11 +1906,8 @@ const Cars = ({ user, db }) => {
                                 onChange={handleInputChange}
                                 className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm cursor-pointer"
                               >
-                                <option value="Verified">Verified</option>
-                                <option value="Not Verified">Not Verified</option>
-                                <option value="Rented">Rented</option>
-                                <option value="Maintenance">Maintenance</option>
-                                <option value="Out of Service">Out of Service</option>
+                                <option value="Available">Available</option>
+                                <option value="Unavailable">Unavailable</option>
                               </select>
                             </div>
                             
@@ -1931,7 +1936,7 @@ const Cars = ({ user, db }) => {
                         {/* Pricing Information Section */}
                         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <DollarSign className="mr-2" size={20} />
+                            <PesoIcon className="mr-2" size={20} />
                             Pricing Information
                           </h4>
                           
@@ -2467,7 +2472,7 @@ const Cars = ({ user, db }) => {
                       {/* Status */}
                       <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                         carToView.status === 'Verified' 
-                          ? 'bg-green-100 text-green-800' 
+                          ? 'bg-gray-100 text-black' 
                           : carToView.status === 'Not Verified'
                           ? 'bg-red-100 text-red-800'
                           : carToView.status === 'Rented'
@@ -2476,10 +2481,9 @@ const Cars = ({ user, db }) => {
                           ? 'bg-orange-100 text-orange-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {carToView.status === 'Verified' && <Shield size={14} className="mr-2" />}
                         {carToView.status === 'Not Verified' && <AlertTriangle size={14} className="mr-2" />}
                         <div className={`w-2 h-2 rounded-full mr-2 ${
-                          carToView.status === 'Verified' ? 'bg-green-400' : 
+                          carToView.status === 'Verified' ? 'bg-gray-400' : 
                           carToView.status === 'Not Verified' ? 'bg-red-400' :
                           carToView.status === 'Rented' ? 'bg-yellow-400' :
                           carToView.status === 'Maintenance' ? 'bg-orange-400' : 'bg-gray-400'
@@ -2526,7 +2530,7 @@ const Cars = ({ user, db }) => {
                       {/* Pricing */}
                       <div>
                         <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                          <DollarSign className="mr-2" size={18} />
+                          <PesoIcon className="mr-2" size={18} />
                           Pricing
                         </h4>
                         <div className="grid grid-cols-1 gap-3">

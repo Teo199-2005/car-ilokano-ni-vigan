@@ -143,7 +143,7 @@ const Dashboard = ({ user }) => {
         const totalCars = vehiclesData.length;
         const availableCars = vehiclesData.filter(car => car.status === 'Available').length;
         
-        // Fetch users data
+        // Fetch users data - only count owners and admins (matching User Management display)
         const usersCollection = collection(db, 'users');
         
         // Get owners
@@ -151,6 +151,20 @@ const Dashboard = ({ user }) => {
         const ownersSnapshot = await getDocs(ownersQuery);
         const ownersData = ownersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const totalOwners = ownersData.length;
+        
+        // Get admins
+        const adminsCollection = collection(db, 'admins');
+        const adminsSnapshot = await getDocs(adminsCollection);
+        const adminsData = adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const totalAdmins = adminsData.length;
+        
+        // Total users = owners + admins (exactly what User Management shows)
+        const totalUsers = totalOwners + totalAdmins;
+        
+        console.log('📊 Dashboard user counts:');
+        console.log('- Owners:', totalOwners);
+        console.log('- Admins:', totalAdmins);
+        console.log('- Total Users (Dashboard):', totalUsers);
         
 
         
@@ -337,31 +351,60 @@ const Dashboard = ({ user }) => {
         // Fetch notifications directly from database
         let notificationsData = [];
         try {
-          const notificationsQuery = query(
-            collection(db, 'notifications'),
-            orderBy('createdAt', 'desc'),
-            limit(10)
-          );
-          const notificationsSnapshot = await getDocs(notificationsQuery);
+          // Try to fetch with createdAt first (newer notifications)
+          let notificationsSnapshot;
+          try {
+            const notificationsQuery = query(
+              collection(db, 'notifications'),
+              orderBy('createdAt', 'desc'),
+              limit(10)
+            );
+            notificationsSnapshot = await getDocs(notificationsQuery);
+          } catch (createdAtError) {
+            // Fallback to 'time' field if createdAt doesn't exist
+            console.log('Trying with time field instead of createdAt');
+            const notificationsQuery = query(
+              collection(db, 'notifications'),
+              orderBy('time', 'desc'),
+              limit(10)
+            );
+            notificationsSnapshot = await getDocs(notificationsQuery);
+          }
           
           notificationsData = notificationsSnapshot.docs.map(doc => {
             const notification = { id: doc.id, ...doc.data() };
             
-            // Format time for display
+            // Format time for display - check multiple timestamp fields
+            let displayDate = null;
             if (notification.createdAt) {
-              const date = notification.createdAt.toDate ? notification.createdAt.toDate() : new Date(notification.createdAt);
-              notification.timeFormatted = date.toLocaleString();
+              displayDate = notification.createdAt.toDate ? notification.createdAt.toDate() : new Date(notification.createdAt);
             } else if (notification.time) {
-              const date = notification.time.toDate ? notification.time.toDate() : new Date(notification.time);
-              notification.timeFormatted = date.toLocaleString();
+              displayDate = notification.time.toDate ? notification.time.toDate() : new Date(notification.time);
+            } else if (notification.updatedAt) {
+              displayDate = notification.updatedAt.toDate ? notification.updatedAt.toDate() : new Date(notification.updatedAt);
+            }
+            
+            if (displayDate) {
+              notification.timeFormatted = displayDate.toLocaleString();
+              notification.sortDate = displayDate; // For sorting
             }
             
             return notification;
           });
           
+          // Sort by date to ensure newest first
+          notificationsData.sort((a, b) => {
+            const dateA = a.sortDate || new Date(0);
+            const dateB = b.sortDate || new Date(0);
+            return dateB - dateA;
+          });
+          
           // Count unread notifications
           const unreadCount = notificationsData.filter(n => !n.read).length;
           setNotificationCount(unreadCount);
+          
+          console.log('📢 Fetched notifications:', notificationsData.length);
+          console.log('📢 Unread notifications:', unreadCount);
           
         } catch (error) {
           console.log('Error fetching notifications:', error);
@@ -373,6 +416,7 @@ const Dashboard = ({ user }) => {
         setStats({
           totalCars,
           totalOwners,
+          totalUsers,
           availableCars,
           totalBookings,
           totalReviews,
@@ -869,10 +913,7 @@ const Dashboard = ({ user }) => {
                             <FileText size={24} className="text-blue-600" />
                           </div>
                         </div>
-                        <div className="flex items-center mt-3">
-                          <Calendar size={12} className="text-blue-500 mr-1" />
-                          <span className="text-xs text-blue-500">This month</span>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -890,9 +931,7 @@ const Dashboard = ({ user }) => {
                             <Car size={24} className="text-purple-600" />
                           </div>
                         </div>
-                        <div className="mt-3">
-                          <span className="text-xs text-gray-500">{stats.availableCars} available</span>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -910,10 +949,7 @@ const Dashboard = ({ user }) => {
                             <UsersRound size={24} className="text-orange-600" />
                           </div>
                         </div>
-                        <div className="flex items-center mt-3">
-                          <Users size={12} className="text-orange-500 mr-1" />
-                          <span className="text-xs text-orange-500">Active</span>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -925,16 +961,13 @@ const Dashboard = ({ user }) => {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <h6 className="text-xs font-medium leading-none tracking-wider text-gray-500 uppercase mb-2">Total Users</h6>
-                            <span className="text-3xl font-bold text-indigo-600">{stats.totalOwners}</span>
+                            <span className="text-3xl font-bold text-indigo-600">{stats.totalUsers}</span>
                           </div>
                           <div className="p-3 bg-indigo-100 rounded-full stat-icon">
                             <Users size={24} className="text-indigo-600" />
                           </div>
                         </div>
-                        <div className="flex items-center mt-3">
-                          <Activity size={12} className="text-indigo-500 mr-1" />
-                          <span className="text-xs text-indigo-500">Active</span>
-                        </div>
+
                       </div>
                     </div>
                   </div>

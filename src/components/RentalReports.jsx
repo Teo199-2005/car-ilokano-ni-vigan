@@ -248,7 +248,7 @@ const RentalReports = ({ user, db: propDb }) => {
             plateNumber: 'N/A', // Not in booking structure
             businessName: booking.ownerName || 'N/A',
             ownerBusinessName: booking.ownerName || 'N/A',
-            totalAmount: booking.price || 0,
+            totalAmount: booking.totalAmount || booking.price || booking.amount || booking.totalPrice || booking.rentalPrice || 0,
             status: booking.status || 'pending',
             paymentStatus: 'N/A' // Not in booking structure
           };
@@ -367,7 +367,7 @@ const RentalReports = ({ user, db: propDb }) => {
           plateNumber: 'N/A',
           businessName: booking.ownerName || 'N/A',
           ownerBusinessName: booking.ownerName || 'N/A',
-          totalAmount: booking.price || 0,
+          totalAmount: booking.totalAmount || booking.price || booking.amount || booking.totalPrice || booking.rentalPrice || 0,
           status: booking.status || 'pending',
           paymentStatus: 'N/A'
         };
@@ -1010,21 +1010,7 @@ const RentalReports = ({ user, db: propDb }) => {
                 
                 {filteredReports.length > 0 ? (
                   <>
-                    {/* Available Vehicles List */}
-                    <div className="mb-4 p-4 bg-green-50 rounded-lg">
-                      <h5 className="text-sm font-semibold text-green-800 mb-2">Available Vehicles ({vehicleStats.available})</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {vehicles.filter(v => v.status === 'Verified').slice(0, 10).map(vehicle => (
-                          <span key={vehicle.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            <Car size={12} className="mr-1" />
-                            {vehicle.brand} {vehicle.model}
-                          </span>
-                        ))}
-                        {vehicleStats.available > 10 && (
-                          <span className="text-xs text-green-600">+{vehicleStats.available - 10} more</span>
-                        )}
-                      </div>
-                    </div>
+
                     
                     <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -1104,7 +1090,6 @@ const RentalReports = ({ user, db: propDb }) => {
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     to {report.endDateFormatted || 'N/A'}
-                                    {report.duration && ` (${report.duration} days)`}
                                   </div>
                                 </div>
                               </div>

@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Notification from './Notification';
 import {
   getFirestore,
   collection,
   getDocs,
+  getDoc,
   query,
   where,
   addDoc,
   updateDoc,
   deleteDoc,
   doc,
+  setDoc,
   Timestamp
 } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -24,6 +27,7 @@ import {
   Edit,
   Trash2,
   Eye,
+  EyeOff,
   UserCheck,
   UserX,
   Shield,
@@ -57,20 +61,38 @@ const UserManagement = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({
+    businessName: '',
     name: '',
     email: '',
     contact: '',
     address: '',
     role: 'owner',
     password: '',
+    confirmPassword: '',
     businessPermit: null,
     businessRegistration: null,
     adminProfile: null
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [notification, setNotification] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState('');
 
   const navigate = useNavigate();
   const db = getFirestore();
+  
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+  };
+  
+  const showConfirm = (message, action) => {
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
+  };
   const auth = getAuth();
   const storage = getStorage();
 
@@ -103,6 +125,12 @@ const UserManagement = () => {
     // Password validation
     if (formData.password && !validatePassword(formData.password)) {
       errors.password = 'Password must be 8+ characters with at least one special character';
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword.trim()) errors.confirmPassword = 'Confirm password is required';
+    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
     }
 
     // Check unique email
@@ -150,11 +178,15 @@ const UserManagement = () => {
       
       // Fetch from users collection
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersData = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        source: 'users'
-      }));
+      const usersData = usersSnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log(`📄 User ${doc.id} data:`, data);
+        return {
+          id: doc.id,
+          ...data,
+          source: 'users'
+        };
+      });
 
       // Fetch from admins collection
       const adminsSnapshot = await getDocs(collection(db, 'admins'));
@@ -167,10 +199,10 @@ const UserManagement = () => {
 
       const allUsers = [...usersData, ...adminsData];
       
-      // Auto-update status for existing users
-      for (const user of allUsers) {
-        await autoUpdateUserStatus(user);
-      }
+      // Auto-update disabled temporarily to fix business name issue
+      // for (const user of allUsers) {
+      //   await autoUpdateUserStatus(user);
+      // }
       
       // Refetch after updates
       const updatedUsersSnapshot = await getDocs(collection(db, 'users'));
@@ -188,7 +220,83 @@ const UserManagement = () => {
         source: 'admins'
       }));
 
-      setUsers([...updatedUsersData, ...updatedAdminsData]);
+      const allUpdatedUsers = [...updatedUsersData, ...updatedAdminsData];
+      
+      // Remove duplicates based on email and DELETE old duplicates from database
+      const uniqueUsers = [];
+      const emailGroups = {};
+      
+      // Group users by email
+      allUpdatedUsers.forEach(user => {
+        if (!emailGroups[user.email]) {
+          emailGroups[user.email] = [];
+        }
+        emailGroups[user.email].push(user);
+      });
+      
+      // Process each email group
+      for (const [email, users] of Object.entries(emailGroups)) {
+        if (users.length > 1) {
+          console.log(`🔍 Found ${users.length} duplicates for email: ${email}`);
+          
+          // Sort by updatedAt to find the most recent
+          users.sort((a, b) => {
+            const dateA = a.updatedAt?.toDate?.() || new Date(0);
+            const dateB = b.updatedAt?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          });
+          
+          // Keep the most recent one
+          const keepUser = users[0];
+          const deleteUsers = users.slice(1);
+          
+          console.log(`✅ Keeping user ${keepUser.id} (most recent)`);
+          uniqueUsers.push(keepUser);
+          
+          // Delete the older duplicates from database
+          deleteUsers.forEach(async (userToDelete) => {
+            try {
+              const targetCollection = userToDelete.source || (userToDelete.role === 'admin' ? 'admins' : 'users');
+              await deleteDoc(doc(db, targetCollection, userToDelete.id));
+              console.log(`🗑️ Deleted duplicate user ${userToDelete.id} from ${targetCollection}`);
+            } catch (error) {
+              console.warn(`⚠️ Could not delete duplicate user ${userToDelete.id}:`, error.message);
+            }
+          });
+        } else {
+          // No duplicates, add the single user
+          uniqueUsers.push(users[0]);
+        }
+      }
+      // Final filter to exclude any users that are in archived collection
+      const archivedSnapshot = await getDocs(collection(db, 'archived_users'));
+      const archivedEmails = new Set(archivedSnapshot.docs.map(doc => doc.data().email));
+      
+      const finalUsers = uniqueUsers.filter(user => !archivedEmails.has(user.email));
+      
+      console.log(`📋 Unique users before final filter: ${uniqueUsers.length}`);
+      console.log(`📂 Archived emails to exclude: ${Array.from(archivedEmails).join(', ')}`);
+      console.log(`📊 Final users after excluding archived: ${finalUsers.length}`);
+      
+      setUsers(finalUsers);
+      console.log('📋 Fetched users (final):', finalUsers.map(u => ({ id: u.id, name: u.name, email: u.email, businessName: u.businessName })));
+      
+      // Check for duplicate emails
+      const emailCounts = {};
+      uniqueUsers.forEach(user => {
+        if (user.email) {
+          emailCounts[user.email] = (emailCounts[user.email] || 0) + 1;
+        }
+      });
+      
+      const duplicateEmails = Object.entries(emailCounts).filter(([email, count]) => count > 1);
+      if (duplicateEmails.length > 0) {
+        console.warn('⚠️ Duplicate emails found:', duplicateEmails);
+        duplicateEmails.forEach(([email, count]) => {
+          const duplicates = uniqueUsers.filter(u => u.email === email);
+          console.warn(`📧 Email ${email} has ${count} users:`, duplicates.map(u => ({ id: u.id, name: u.name, businessName: u.businessName })));
+        });
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -199,14 +307,37 @@ const UserManagement = () => {
   // Fetch archived users
   const fetchArchivedUsers = async () => {
     try {
+      console.log('📂 Fetching archived users...');
       const archivedSnapshot = await getDocs(collection(db, 'archived_users'));
       const archivedData = archivedSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setArchivedUsers(archivedData);
+      
+      // Remove duplicates from archived users based on email
+      const uniqueArchivedUsers = [];
+      const seenEmails = new Set();
+      
+      for (const user of archivedData) {
+        if (!seenEmails.has(user.email)) {
+          seenEmails.add(user.email);
+          uniqueArchivedUsers.push(user);
+        } else {
+          // Delete duplicate from database
+          try {
+            await deleteDoc(doc(db, 'archived_users', user.id));
+            console.log(`🗑️ Deleted duplicate archived user: ${user.id}`);
+          } catch (error) {
+            console.warn(`⚠️ Could not delete duplicate archived user ${user.id}:`, error.message);
+          }
+        }
+      }
+      
+      console.log('📄 Fetched archived users:', uniqueArchivedUsers.length, 'users');
+      console.log('📅 Archived users data:', uniqueArchivedUsers.map(u => ({ id: u.id, name: u.name, email: u.email })));
+      setArchivedUsers(uniqueArchivedUsers);
     } catch (error) {
-      console.error('Error fetching archived users:', error);
+      console.error('❌ Error fetching archived users:', error);
     }
   };
 
@@ -267,6 +398,7 @@ const UserManagement = () => {
       // Create user document
       const userData = {
         uid: userCredential.user.uid,
+        businessName: formData.businessName || '',
         name: formData.name,
         email: formData.email,
         contact: formData.contact,
@@ -286,12 +418,14 @@ const UserManagement = () => {
 
       // Reset form and close modal
       setFormData({
+        businessName: '',
         name: '',
         email: '',
         contact: '',
         address: '',
         role: 'owner',
         password: '',
+        confirmPassword: '',
         businessPermit: null,
         businessRegistration: null,
         adminProfile: null
@@ -301,6 +435,7 @@ const UserManagement = () => {
       
       // Refresh users list
       fetchUsers();
+      showNotification('success', `User ${formData.name} added successfully!`);
     } catch (error) {
       console.error('Error adding user:', error);
       setFormErrors({ submit: error.message });
@@ -333,26 +468,83 @@ const UserManagement = () => {
 
   // Restore user
   const handleRestoreUser = async (user) => {
-    if (!window.confirm(`Are you sure you want to restore ${user.name}?`)) return;
-
     try {
+      console.log('🔄 Starting restore process for user:', user);
+      console.log('📋 User details:', {
+        id: user.id,
+        uid: user.uid,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      });
+      
       // Add back to original collection
       const targetCollection = user.role === 'admin' ? 'admins' : 'users';
-      const { archivedAt, archivedBy, ...userData } = user;
+      const { archivedAt, archivedBy, id, ...userData } = user;
       
-      await addDoc(collection(db, targetCollection), {
+      console.log('📁 Target collection:', targetCollection);
+      console.log('📄 Clean user data to restore:', userData);
+      
+      // Always use addDoc to create a new document
+      const docRef = await addDoc(collection(db, targetCollection), {
         ...userData,
+        isActive: true, // Ensure user is active when restored
         updatedAt: Timestamp.now()
       });
+      console.log('✅ User restored with new ID:', docRef.id);
 
-      // Remove from archived collection
-      await deleteDoc(doc(db, 'archived_users', user.id));
+      // Remove ALL archived documents with the same email
+      console.log('🗑️ Removing all archived documents with email:', user.email);
+      const archivedQuery = query(
+        collection(db, 'archived_users'),
+        where('email', '==', user.email)
+      );
+      const archivedQuerySnapshot = await getDocs(archivedQuery);
+      
+      console.log(`🔍 Found ${archivedQuerySnapshot.docs.length} archived documents to delete`);
+      
+      const deletePromises = archivedQuerySnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      
+      console.log('✅ Successfully removed all archived documents with this email');
 
-      // Refresh lists
-      fetchUsers();
-      fetchArchivedUsers();
+      // Update local state immediately - remove from archived
+      setArchivedUsers(prev => {
+        console.log('🗑️ Removing user from archived list:', user.id);
+        const filtered = prev.filter(u => u.id !== user.id);
+        console.log('📋 Archived users after removal:', filtered.length);
+        return filtered;
+      });
+      
+      // Add to active users list immediately
+      const restoredUser = {
+        id: docRef.id,
+        ...userData,
+        isActive: true,
+        updatedAt: Timestamp.now(),
+        source: targetCollection
+      };
+      
+      setUsers(prev => {
+        // Remove any existing duplicates with same email first
+        const filtered = prev.filter(u => u.email !== user.email);
+        // Add the restored user
+        return [...filtered, restoredUser];
+      });
+      
+      // Refresh lists immediately after restore
+      console.log('🔄 Refreshing user lists after restore...');
+      await fetchUsers();
+      await fetchArchivedUsers();
+      
+      showNotification('success', `User ${user.name || user.email} restored successfully!`);
+      console.log('✅ Restore process completed successfully');
     } catch (error) {
-      console.error('Error restoring user:', error);
+      console.error('❌ Error restoring user:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Full error object:', error);
+      showNotification('error', `Failed to restore user: ${error.message}`);
     }
   };
 
@@ -364,8 +556,10 @@ const UserManagement = () => {
 
   // Edit user
   const handleEditUser = (user) => {
+    console.log('🔧 Editing user:', user);
     setCurrentUser(user);
     setFormData({
+      businessName: user.businessName || '',
       name: user.name || '',
       email: user.email || '',
       contact: user.contact || '',
@@ -379,6 +573,10 @@ const UserManagement = () => {
   // Update user
   const handleUpdateUser = async (e) => {
     e.preventDefault();
+    
+    console.log('🔄 Updating user with formData:', formData);
+    console.log('👤 Current user:', currentUser);
+    console.log('🏢 Business name being saved:', formData.businessName);
     
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Name is required';
@@ -421,6 +619,7 @@ const UserManagement = () => {
       }
       
       const updateData = {
+        businessName: formData.businessName || '',
         name: formData.name,
         email: formData.email,
         contact: formData.contact,
@@ -430,11 +629,73 @@ const UserManagement = () => {
         updatedAt: Timestamp.now()
       };
 
-      await updateDoc(doc(db, targetCollection, currentUser.id), updateData);
+      console.log('💾 Update data:', updateData);
+      console.log('📁 Target collection:', targetCollection);
+      console.log('🎯 Document ID:', currentUser.id);
+
+      const docRef = doc(db, targetCollection, currentUser.id);
+      console.log('📝 Writing to document:', docRef.path);
+      console.log('💾 Data to write:', updateData);
+      
+      try {
+        // Try updateDoc first, then setDoc as fallback
+        try {
+          await updateDoc(docRef, updateData);
+          console.log('✅ updateDoc completed successfully');
+        } catch (updateError) {
+          console.log('⚠️ updateDoc failed, trying setDoc with merge:', updateError.message);
+          await setDoc(docRef, updateData, { merge: true });
+          console.log('✅ setDoc with merge completed successfully');
+        }
+        
+        // Immediately verify the write
+        const immediateVerify = await getDoc(docRef);
+        if (immediateVerify.exists()) {
+          console.log('🔍 Immediate verification - data exists:', immediateVerify.data());
+        } else {
+          console.error('❌ Immediate verification - document does not exist!');
+        }
+        
+        console.log('✅ User updated successfully');
+        showNotification('success', `User ${formData.name} updated successfully!`);
+      } catch (writeError) {
+        console.error('❌ Error writing to Firestore:', writeError);
+        throw writeError;
+      }
+      
+      // Verify the data was actually saved
+      const verifyDoc = await getDoc(doc(db, targetCollection, currentUser.id));
+      if (verifyDoc.exists()) {
+        console.log('🔍 Verified saved data:', verifyDoc.data());
+        console.log('🏢 Verified business name:', verifyDoc.data().businessName);
+      }
+      
+      // Update local state directly with the new data
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === currentUser.id 
+            ? { ...user, ...updateData }
+            : user
+        )
+      );
+      
+      console.log('🔄 Updated local state directly');
+      
+      // Also refresh from database to ensure data persistence
+      await fetchUsers();
+      
+      // Refresh current user data to reflect changes in edit modal
+      const refreshedDoc = await getDoc(doc(db, targetCollection, currentUser.id));
+      if (refreshedDoc.exists()) {
+        const refreshedUser = { id: refreshedDoc.id, ...refreshedDoc.data(), source: targetCollection };
+        setCurrentUser(refreshedUser);
+        console.log('🔄 Refreshed current user data:', refreshedUser);
+      }
       
       setShowEditModal(false);
       setCurrentUser(null);
       setFormData({
+        businessName: '',
         name: '',
         email: '',
         contact: '',
@@ -443,7 +704,6 @@ const UserManagement = () => {
         password: ''
       });
       setFormErrors({});
-      fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
       setFormErrors({ submit: error.message });
@@ -459,36 +719,125 @@ const UserManagement = () => {
   // Confirm delete user (archive instead)
   const confirmDeleteUser = async () => {
     try {
-      // Add to archived_users collection
+      console.log('🗂️ Archiving user:', currentUser);
+      
+      // Get ALL users from database with same email (including from both collections)
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const adminsSnapshot = await getDocs(collection(db, 'admins'));
+      
+      const allDbUsers = [
+        ...usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), source: 'users' })),
+        ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), source: 'admins' }))
+      ];
+      
+      const usersToDelete = allDbUsers.filter(u => u.email === currentUser.email);
+      console.log('🗑️ Found', usersToDelete.length, 'users in database with email:', currentUser.email);
+      
+      // Add ONE copy to archived_users collection
       await addDoc(collection(db, 'archived_users'), {
         ...currentUser,
         archivedAt: Timestamp.now(),
         archivedBy: 'admin'
       });
+      console.log('✅ User added to archived collection');
 
-      // Remove from original collection
-      const targetCollection = currentUser.source || (currentUser.role === 'admin' ? 'admins' : 'users');
-      await deleteDoc(doc(db, targetCollection, currentUser.id));
+      // Delete ALL duplicates from database
+      for (const userToDelete of usersToDelete) {
+        const targetCollection = userToDelete.source;
+        try {
+          await deleteDoc(doc(db, targetCollection, userToDelete.id));
+          console.log('✅ Deleted user from database:', userToDelete.id, 'from', targetCollection);
+        } catch (deleteError) {
+          console.warn('⚠️ Could not delete user:', userToDelete.id, deleteError.message);
+        }
+      }
+      
+      // Update local state immediately - remove ALL users with same email
+      setUsers(prev => {
+        const filtered = prev.filter(u => u.email !== currentUser.email);
+        console.log('📋 Active users after removal:', filtered.length);
+        console.log('🧹 Removed all users with email:', currentUser.email);
+        return filtered;
+      });
+      
+      // Add to archived users local state
+      setArchivedUsers(prev => [
+        ...prev,
+        {
+          ...currentUser,
+          archivedAt: Timestamp.now(),
+          archivedBy: 'admin'
+        }
+      ]);
       
       setShowDeleteModal(false);
       setCurrentUser(null);
-      fetchUsers();
-      fetchArchivedUsers();
+      
+      showNotification('success', `User ${currentUser.name} archived successfully!`);
+      
     } catch (error) {
       console.error('Error archiving user:', error);
+      showNotification('error', 'Failed to archive user. Please try again.');
     }
   };
 
   // Permanently delete user
   const handlePermanentDelete = async (user) => {
-    if (!window.confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`)) return;
-
-    try {
-      await deleteDoc(doc(db, 'archived_users', user.id));
-      fetchArchivedUsers();
-    } catch (error) {
-      console.error('Error permanently deleting user:', error);
-    }
+    console.log('🗑️ Attempting to delete user:', user);
+    console.log('📄 User ID:', user.id);
+    
+    const performDelete = async () => {
+      try {
+        console.log(`🔍 Starting permanent deletion for email: ${user.email}`);
+        
+        // Delete from ALL collections where this user might exist
+        const collections = ['archived_users', 'users', 'admins'];
+        let totalDeleted = 0;
+        
+        for (const collectionName of collections) {
+          try {
+            const userQuery = query(
+              collection(db, collectionName),
+              where('email', '==', user.email)
+            );
+            const querySnapshot = await getDocs(userQuery);
+            
+            console.log(`📂 Found ${querySnapshot.docs.length} documents in ${collectionName}`);
+            
+            if (querySnapshot.docs.length > 0) {
+              const deletePromises = querySnapshot.docs.map(doc => {
+                console.log(`🗑️ Deleting ${doc.id} from ${collectionName}`);
+                return deleteDoc(doc.ref);
+              });
+              await Promise.all(deletePromises);
+              totalDeleted += querySnapshot.docs.length;
+            }
+          } catch (collectionError) {
+            console.warn(`⚠️ Error deleting from ${collectionName}:`, collectionError.message);
+          }
+        }
+        
+        console.log(`✅ Total documents deleted: ${totalDeleted}`);
+        showNotification('success', `User ${user.name || user.email} permanently deleted from all collections!`);
+        
+        // Update local states immediately
+        setArchivedUsers(prev => prev.filter(u => u.email !== user.email));
+        setUsers(prev => prev.filter(u => u.email !== user.email));
+        
+        // Refresh from database
+        await fetchArchivedUsers();
+        await fetchUsers();
+      } catch (error) {
+        console.error('❌ Error permanently deleting user:', error);
+        console.error('Error details:', error.message);
+        showNotification('error', `Failed to delete user: ${error.message}`);
+      }
+    };
+    
+    showConfirm(
+      `Are you sure you want to permanently delete ${user.name || user.email}? This action cannot be undone.`,
+      performDelete
+    );
   };
 
   // Approve user
@@ -527,15 +876,42 @@ const UserManagement = () => {
     }
   };
 
+  // Toggle user active status
+  const handleToggleActiveStatus = async (user) => {
+    try {
+      const targetCollection = user.source || (user.role === 'admin' ? 'admins' : 'users');
+      const newActiveStatus = !user.isActive;
+      
+      await updateDoc(doc(db, targetCollection, user.id), {
+        isActive: newActiveStatus,
+        updatedAt: Timestamp.now()
+      });
+      
+      // Update local state immediately
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === user.id ? { ...u, isActive: newActiveStatus } : u
+        )
+      );
+      
+      showNotification('success', `User ${user.name} ${newActiveStatus ? 'activated' : 'deactivated'} successfully!`);
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      showNotification('error', 'Failed to update user status');
+    }
+  };
+
   // Reset form
   const resetForm = () => {
     setFormData({
+      businessName: '',
       name: '',
       email: '',
       contact: '',
       address: '',
       role: 'owner',
       password: '',
+      confirmPassword: '',
       businessPermit: null,
       businessRegistration: null,
       adminProfile: null
@@ -559,13 +935,143 @@ const UserManagement = () => {
     return isOwnerOrAdmin && matchesFilter && matchesSearch;
   });
 
+  // Manual cleanup function for remaining duplicates
+  const cleanupDuplicates = async () => {
+    try {
+      console.log('🧹 Starting manual cleanup of duplicates...');
+      
+      // Get archived users first to avoid deleting them
+      const archivedSnapshot = await getDocs(collection(db, 'archived_users'));
+      const archivedEmails = new Set(archivedSnapshot.docs.map(doc => doc.data().email));
+      
+      // Get all users from both collections
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const adminsSnapshot = await getDocs(collection(db, 'admins'));
+      
+      const allUsers = [
+        ...usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), source: 'users' })),
+        ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), source: 'admins' }))
+      ];
+      
+      // Remove users that are already archived
+      const activeUsers = allUsers.filter(user => !archivedEmails.has(user.email));
+      
+      console.log(`📋 Total users found: ${allUsers.length}`);
+      console.log(`📂 Archived emails: ${Array.from(archivedEmails).join(', ')}`);
+      console.log(`📊 Active users after filtering: ${activeUsers.length}`);
+      
+      // Also delete any users from active collections that are already archived
+      const usersToDeleteFromActive = allUsers.filter(user => archivedEmails.has(user.email));
+      if (usersToDeleteFromActive.length > 0) {
+        console.log(`🗑️ Found ${usersToDeleteFromActive.length} users in active collections that should be archived`);
+        for (const user of usersToDeleteFromActive) {
+          try {
+            await deleteDoc(doc(db, user.source, user.id));
+            console.log(`🗑️ Deleted archived user from active collection: ${user.id} (${user.email})`);
+          } catch (error) {
+            console.warn(`⚠️ Could not delete archived user ${user.id}:`, error.message);
+          }
+        }
+      }
+      
+      // Group by email to find duplicates
+      const emailGroups = {};
+      activeUsers.forEach(user => {
+        if (user.email) {
+          if (!emailGroups[user.email]) {
+            emailGroups[user.email] = [];
+          }
+          emailGroups[user.email].push(user);
+        }
+      });
+      
+      // Delete duplicates only for non-archived users
+      for (const [email, users] of Object.entries(emailGroups)) {
+        if (users.length > 1) {
+          console.log(`🔍 Found ${users.length} duplicates for ${email}`);
+          
+          // Sort by updatedAt, keep the most recent
+          users.sort((a, b) => {
+            const dateA = a.updatedAt?.toDate?.() || new Date(0);
+            const dateB = b.updatedAt?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          });
+          
+          // Delete all except the first (most recent)
+          const toDelete = users.slice(1);
+          const deletePromises = toDelete.map(async (user) => {
+            try {
+              await deleteDoc(doc(db, user.source, user.id));
+              console.log(`🗑️ Deleted duplicate: ${user.id} from ${user.source}`);
+            } catch (error) {
+              console.warn(`⚠️ Could not delete ${user.id}:`, error.message);
+            }
+          });
+          
+          // Wait for all deletions to complete
+          await Promise.all(deletePromises);
+        }
+      }
+      
+      console.log('✅ Manual cleanup completed');
+    } catch (error) {
+      console.error('❌ Manual cleanup failed:', error);
+    }
+  };
+
   useEffect(() => {
-    fetchUsers();
-    fetchArchivedUsers();
+    const initializeData = async () => {
+      // Run cleanup first, then fetch clean data
+      await cleanupDuplicates();
+      await fetchUsers();
+      await fetchArchivedUsers();
+    };
+    
+    initializeData();
   }, []);
+
+  // Sync form data when currentUser changes (for edit modal)
+  useEffect(() => {
+    if (currentUser && showEditModal) {
+      console.log('🔄 Syncing form data with current user:', currentUser);
+      setFormData({
+        businessName: currentUser.businessName || '',
+        name: currentUser.name || '',
+        email: currentUser.email || '',
+        contact: currentUser.contact || '',
+        address: currentUser.address || '',
+        role: currentUser.role || 'owner',
+        password: ''
+      });
+    }
+  }, [currentUser, showEditModal]);
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out;
+        }
+      `}</style>
+      
+      {notification && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
+      
       <Sidebar currentPage="users" />
       
       <div className="flex-1 flex flex-col overflow-hidden ml-0 lg:ml-64">
@@ -676,7 +1182,7 @@ const UserManagement = () => {
                             Account Status
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Activity
+                            Status
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Contact
@@ -693,14 +1199,14 @@ const UserManagement = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredUsers.map((user) => {
+                        {filteredUsers.map((user, index) => {
                           const userStatus = user.status || 'pending';
                           const isVerified = user.isVerified || false;
                           const isActive = user.isActive !== false; // Default to active if not specified
                           const isPending = userStatus === 'pending';
                           
                           return (
-                            <tr key={user.id} className="hover:bg-gray-50">
+                            <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
                               <td className="px-4 py-4">
                                 <div className="flex items-center">
                                   <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
@@ -762,14 +1268,18 @@ const UserManagement = () => {
                                 </div>
                               </td>
                               <td className="px-4 py-4">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>
+                                <button
+                                  onClick={() => handleToggleActiveStatus(user)}
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer hover:opacity-80 ${
+                                    isActive ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                  }`}
+                                  title={`Click to ${isActive ? 'deactivate' : 'activate'} user`}
+                                >
                                   <div className={`w-2 h-2 rounded-full mr-2 ${
                                     isActive ? 'bg-green-400' : 'bg-red-400'
                                   }`}></div>
                                   {isActive ? 'Active' : 'Inactive'}
-                                </span>
+                                </button>
                               </td>
                               <td className="px-4 py-4">
                                 <div className="space-y-1">
@@ -868,8 +1378,10 @@ const UserManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {archivedUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
+                    {archivedUsers.filter((user, index, self) => 
+                      index === self.findIndex(u => u.id === user.id && u.email === user.email)
+                    ).map((user, index) => (
+                      <tr key={`archived-${user.id}-${index}`} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
@@ -924,80 +1436,149 @@ const UserManagement = () => {
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Add New User</h3>
             
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {formErrors.name && <p className="text-red-600 text-xs mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>{formErrors.name}
-                </p>}
+            <form onSubmit={handleAddUser} className="space-y-6">
+              {/* First Row - Business Name and Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={formData.businessName || ''}
+                    onChange={(e) => setFormData({...formData, businessName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {formErrors.name && <p className="text-red-600 text-xs mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>{formErrors.name}
+                  </p>}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {formErrors.email && <p className="text-red-600 text-xs mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>{formErrors.email}
-                </p>}
+              {/* Second Row - Email and Password */}
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {formErrors.email && <p className="text-red-600 text-xs mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>{formErrors.email}
+                  </p>}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Password *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const businessName = formData.businessName || 'User';
+                        const cleanName = businessName.replace(/[^a-zA-Z]/g, '').substring(0, 8);
+                        const randomDigits = Math.floor(100 + Math.random() * 900);
+                        const generatedPassword = `${cleanName}${randomDigits}!`;
+                        setFormData({...formData, password: generatedPassword, confirmPassword: generatedPassword});
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Generate Password
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength="8"
+                      pattern="^(?=.*[!@#$%^&*(),.?&quot;:{}|<>]).{8,}$"
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      title="Password must be at least 8 characters with at least one special character"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {formErrors.password && <p className="text-red-600 text-xs mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>{formErrors.password}
+                  </p>}
+                  <p className="text-xs text-gray-500 mt-1">8+ characters with at least one special character</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {formErrors.confirmPassword && <p className="text-red-600 text-xs mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>{formErrors.confirmPassword}
+                  </p>}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength="8"
-                  pattern="^(?=.*[!@#$%^&*(),.?&quot;:{}|<>]).{8,}$"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  title="Password must be at least 8 characters with at least one special character"
-                />
-                {formErrors.password && <p className="text-red-600 text-xs mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>{formErrors.password}
-                </p>}
-                <p className="text-xs text-gray-500 mt-1">8+ characters with at least one special character</p>
+              {/* Third Row - Contact and Address */}
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.contact}
+                    onChange={(e) => setFormData({...formData, contact: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {formErrors.contact && <p className="text-red-600 text-xs mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>{formErrors.contact}
+                  </p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact *</label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.contact}
-                  onChange={(e) => setFormData({...formData, contact: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {formErrors.contact && <p className="text-red-600 text-xs mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>{formErrors.contact}
-                </p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
+              {/* Role Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
                 <select
@@ -1081,12 +1662,22 @@ const UserManagement = () => {
       )}
 
       {/* Edit User Modal */}
-      {showEditModal && (
+      {showEditModal && currentUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Edit User</h3>
             
             <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                <input
+                  type="text"
+                  value={formData.businessName || ''}
+                  onChange={(e) => setFormData({...formData, businessName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input
@@ -1432,6 +2023,46 @@ const UserManagement = () => {
         </div>
       )}
 
+      {/* Custom Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                <AlertCircle size={20} className="text-yellow-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">Confirm Action</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">{confirmMessage}</p>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                  setConfirmMessage('');
+                }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmAction) confirmAction();
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                  setConfirmMessage('');
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && currentUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1440,11 +2071,11 @@ const UserManagement = () => {
               <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
                 <Trash2 size={20} className="text-red-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900">Delete User</h3>
+              <h3 className="text-lg font-medium text-gray-900">Archive User</h3>
             </div>
             
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete <strong>{currentUser.name}</strong>? This action cannot be undone.
+              Are you sure you want to archive <strong>{currentUser.name}</strong>? The user will be moved to the archived section and can be restored later.
             </p>
 
             <div className="flex justify-end space-x-3">
@@ -1462,7 +2093,7 @@ const UserManagement = () => {
                 className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 <Trash2 size={16} className="mr-2" />
-                Delete User
+                Archive User
               </button>
             </div>
           </div>
