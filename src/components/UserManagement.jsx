@@ -620,6 +620,10 @@ const UserManagement = () => {
         businessRegistrationURL = await getDownloadURL(registrationRef);
       }
       
+      // Auto-verify if user is active, approved, and has permits
+      const hasPermits = businessPermitURL || businessRegistrationURL || currentUser.businessDocuments?.permit?.url || currentUser.businessDocuments?.registration?.url;
+      const shouldAutoVerify = currentUser.isActive && currentUser.status === 'approved' && hasPermits;
+      
       const updateData = {
         businessName: formData.businessName || '',
         name: formData.name,
@@ -628,6 +632,7 @@ const UserManagement = () => {
         address: formData.address,
         businessPermitURL,
         businessRegistrationURL,
+        isVerified: shouldAutoVerify,
         updatedAt: Timestamp.now()
       };
 
@@ -925,15 +930,25 @@ const UserManagement = () => {
       const targetCollection = user.source || (user.role === 'admin' ? 'admins' : 'users');
       const newActiveStatus = !user.isActive;
       
-      await updateDoc(doc(db, targetCollection, user.id), {
+      // Auto-verify if user becomes active, is approved, and has permits
+      const hasPermits = user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url;
+      const shouldAutoVerify = newActiveStatus && user.status === 'approved' && hasPermits;
+      
+      const updateData = {
         isActive: newActiveStatus,
         updatedAt: Timestamp.now()
-      });
+      };
+      
+      if (shouldAutoVerify) {
+        updateData.isVerified = true;
+      }
+      
+      await updateDoc(doc(db, targetCollection, user.id), updateData);
       
       // Update local state immediately
       setUsers(prevUsers => 
         prevUsers.map(u => 
-          u.id === user.id ? { ...u, isActive: newActiveStatus } : u
+          u.id === user.id ? { ...u, ...updateData } : u
         )
       );
       
@@ -1079,9 +1094,9 @@ const UserManagement = () => {
       console.log('🔄 Syncing form data with current user:', currentUser);
       setFormData({
         businessName: currentUser.businessName || '',
-        name: currentUser.name || '',
+        name: currentUser.name || currentUser.fullName || '',
         email: currentUser.email || '',
-        contact: currentUser.contact || '',
+        contact: currentUser.contact || currentUser.contactNumber || '',
         address: currentUser.address || '',
         role: currentUser.role || 'owner',
         password: ''
@@ -1328,7 +1343,7 @@ const UserManagement = () => {
                                 <div className="space-y-1">
                                   <div className="flex items-center text-sm text-gray-900">
                                     <Phone size={12} className="mr-2 text-gray-400" />
-                                    <span>{user.contact || 'N/A'}</span>
+                                    <span>{user.contact || user.contactNumber || 'N/A'}</span>
                                   </div>
                                   <div className="flex items-center text-sm text-gray-600">
                                     <Mail size={12} className="mr-2 text-gray-400" />
@@ -1768,29 +1783,29 @@ const UserManagement = () => {
               </div>
 
               {/* Current Business Documents */}
-              {currentUser && (currentUser.businessPermitURL || currentUser.businessRegistrationURL) && (
+              {currentUser && (currentUser.businessPermitURL || currentUser.businessRegistrationURL || currentUser.businessDocuments?.permit?.url || currentUser.businessDocuments?.registration?.url) && (
                 <div className="border-t pt-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-3">Current Business Documents</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentUser.businessPermitURL && (
+                    {(currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url) && (
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-2">Business Permit</p>
                         <img 
-                          src={currentUser.businessPermitURL} 
+                          src={currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url} 
                           alt="Business Permit" 
                           className="w-full h-24 object-cover rounded-lg border cursor-pointer"
-                          onClick={() => window.open(currentUser.businessPermitURL, '_blank')}
+                          onClick={() => window.open(currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url, '_blank')}
                         />
                       </div>
                     )}
-                    {currentUser.businessRegistrationURL && (
+                    {(currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url) && (
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-2">Business Registration</p>
                         <img 
-                          src={currentUser.businessRegistrationURL} 
+                          src={currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url} 
                           alt="Business Registration" 
                           className="w-full h-24 object-cover rounded-lg border cursor-pointer"
-                          onClick={() => window.open(currentUser.businessRegistrationURL, '_blank')}
+                          onClick={() => window.open(currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url, '_blank')}
                         />
                       </div>
                     )}
@@ -1995,12 +2010,12 @@ const UserManagement = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-2">Business Permit</p>
-                        {currentUser.businessPermitURL ? (
+                        {currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url ? (
                           <img 
-                            src={currentUser.businessPermitURL} 
+                            src={currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url} 
                             alt="Business Permit" 
                             className="w-full h-32 object-cover rounded-lg border cursor-pointer"
-                            onClick={() => window.open(currentUser.businessPermitURL, '_blank')}
+                            onClick={() => window.open(currentUser.businessPermitURL || currentUser.businessDocuments?.permit?.url, '_blank')}
                           />
                         ) : (
                           <div className="w-full h-32 bg-gray-100 rounded-lg border flex items-center justify-center">
@@ -2010,12 +2025,12 @@ const UserManagement = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-2">Business Registration</p>
-                        {currentUser.businessRegistrationURL ? (
+                        {currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url ? (
                           <img 
-                            src={currentUser.businessRegistrationURL} 
+                            src={currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url} 
                             alt="Business Registration" 
                             className="w-full h-32 object-cover rounded-lg border cursor-pointer"
-                            onClick={() => window.open(currentUser.businessRegistrationURL, '_blank')}
+                            onClick={() => window.open(currentUser.businessRegistrationURL || currentUser.businessDocuments?.registration?.url, '_blank')}
                           />
                         ) : (
                           <div className="w-full h-32 bg-gray-100 rounded-lg border flex items-center justify-center">
