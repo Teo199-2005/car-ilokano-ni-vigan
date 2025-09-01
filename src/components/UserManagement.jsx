@@ -384,15 +384,16 @@ const UserManagement = () => {
       }
 
       // Determine status and verification based on role and permits
-      let status = 'pending';
+      // Since admin is creating the user, default to approved status
+      let status = 'approved';
       let isVerified = false;
       
       if (formData.role === 'admin') {
         status = 'approved';
         isVerified = true;
-      } else if (formData.role === 'owner' && (businessPermitURL || businessRegistrationURL)) {
-        status = 'approved';
-        isVerified = true;
+      } else if (formData.role === 'owner') {
+        status = 'approved'; // Admin-created owners are approved by default
+        isVerified = businessPermitURL || businessRegistrationURL; // Verified if they have documents
       }
 
       // Create user document
@@ -410,7 +411,8 @@ const UserManagement = () => {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         status,
-        isVerified
+        isVerified,
+        isActive: false // New users start as inactive by default
       };
 
       const targetCollection = formData.role === 'admin' ? 'admins' : 'users';
@@ -843,36 +845,77 @@ const UserManagement = () => {
   // Approve user
   const handleApproveUser = async (user) => {
     try {
-      const targetCollection = user.source || 'users';
+      console.log('🔄 Approving user:', user);
+      const targetCollection = user.source || (user.role === 'admin' ? 'admins' : 'users');
+      console.log('📁 Target collection:', targetCollection);
       
       // Auto-verify if user has permits or is admin
-      const shouldAutoVerify = user.role === 'admin' || user.businessPermitURL || user.businessRegistrationURL;
+      const shouldAutoVerify = Boolean(user.role === 'admin' || user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url);
       
-      await updateDoc(doc(db, targetCollection, user.id), {
+      const updateData = {
         status: 'approved',
         isVerified: shouldAutoVerify,
         approvedAt: Timestamp.now(),
         updatedAt: Timestamp.now()
-      });
-      fetchUsers();
+      };
+      
+      console.log('💾 Update data:', updateData);
+      
+      const docRef = doc(db, targetCollection, user.id);
+      await updateDoc(docRef, updateData);
+      
+      console.log('✅ User approved in database');
+      
+      // Update local state immediately
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === user.id 
+            ? { ...u, ...updateData }
+            : u
+        )
+      );
+      
+      showNotification('success', `User ${user.name || user.fullName} approved successfully!`);
     } catch (error) {
-      console.error('Error approving user:', error);
+      console.error('❌ Error approving user:', error);
+      console.error('Error details:', error.message);
+      showNotification('error', `Failed to approve user: ${error.message}`);
     }
   };
 
   // Reject user
   const handleRejectUser = async (user) => {
     try {
-      const targetCollection = user.source || 'users';
-      await updateDoc(doc(db, targetCollection, user.id), {
+      console.log('🔄 Rejecting user:', user);
+      const targetCollection = user.source || (user.role === 'admin' ? 'admins' : 'users');
+      console.log('📁 Target collection:', targetCollection);
+      
+      const updateData = {
         status: 'rejected',
         isVerified: false,
         rejectedAt: Timestamp.now(),
         updatedAt: Timestamp.now()
-      });
-      fetchUsers();
+      };
+      
+      const docRef = doc(db, targetCollection, user.id);
+      await updateDoc(docRef, updateData);
+      
+      console.log('✅ User rejected in database');
+      
+      // Update local state immediately
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === user.id 
+            ? { ...u, ...updateData }
+            : u
+        )
+      );
+      
+      showNotification('success', `User ${user.name || user.fullName} rejected successfully!`);
     } catch (error) {
-      console.error('Error rejecting user:', error);
+      console.error('❌ Error rejecting user:', error);
+      console.error('Error details:', error.message);
+      showNotification('error', `Failed to reject user: ${error.message}`);
     }
   };
 
@@ -1202,7 +1245,7 @@ const UserManagement = () => {
                         {filteredUsers.map((user, index) => {
                           const userStatus = user.status || 'pending';
                           const isVerified = user.isVerified || false;
-                          const isActive = user.isActive !== false; // Default to active if not specified
+                          const isActive = user.isActive === true; // Default to inactive if not specified
                           const isPending = userStatus === 'pending';
                           
                           return (
@@ -1211,11 +1254,11 @@ const UserManagement = () => {
                                 <div className="flex items-center">
                                   <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                                     <span className="text-sm font-medium text-gray-600">
-                                      {user.name?.charAt(0).toUpperCase()}
+                                      {(user.name || user.fullName)?.charAt(0).toUpperCase()}
                                     </span>
                                   </div>
                                   <div className="ml-3 min-w-0">
-                                    <div className="text-sm font-medium text-gray-900 truncate">{user.name || 'N/A'}</div>
+                                    <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
                                   </div>
                                 </div>
                               </td>
@@ -1255,13 +1298,13 @@ const UserManagement = () => {
                                   </div>
                                   {user.role === 'owner' && (
                                     <div className="flex items-center">
-                                      {user.businessPermitURL || user.businessRegistrationURL ? (
+                                      {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? (
                                         <FileCheck size={12} className="mr-2 text-green-500" />
                                       ) : (
                                         <FileText size={12} className="mr-2 text-gray-400" />
                                       )}
                                       <span className="text-xs text-gray-700">
-                                        {user.businessPermitURL || user.businessRegistrationURL ? 'Has Permit' : 'No Permit'}
+                                        {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
                                       </span>
                                     </div>
                                   )}
@@ -1386,11 +1429,11 @@ const UserManagement = () => {
                           <div className="flex items-center">
                             <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
                               <span className="text-sm font-medium text-gray-600">
-                                {user.name?.charAt(0).toUpperCase()}
+                                {(user.name || user.fullName)?.charAt(0).toUpperCase()}
                               </span>
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-500">{user.name}</div>
+                              <div className="text-sm font-medium text-gray-500">{user.name || user.fullName}</div>
                               <div className="text-sm text-gray-400">{user.email}</div>
                             </div>
                           </div>
