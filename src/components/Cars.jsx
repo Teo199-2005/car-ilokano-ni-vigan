@@ -1311,8 +1311,8 @@ const Cars = ({ user, db }) => {
         <Sidebar currentPage="cars" />
         
         <div className="lg:pl-64 flex flex-col flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-3">
+            <div className="max-w-full mx-auto px-3">
               <h1 className="text-2xl font-semibold text-gray-900">Vehicle Listings</h1>
             </div>
             
@@ -1339,9 +1339,9 @@ const Cars = ({ user, db }) => {
               </div>
             )}
             
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-full mx-auto px-3">
               {/* Search, Filter and Add Car */}
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center my-4 space-y-3 lg:space-y-0 lg:space-x-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center my-2 space-y-2 lg:space-y-0 lg:space-x-4">
                 <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4 w-full lg:w-auto">
                   {/* Search Input */}
                   <div className="relative w-full md:w-64">
@@ -1444,13 +1444,13 @@ const Cars = ({ user, db }) => {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 mt-1">
                   {currentCars.map((car) => (
                     <div
                       key={car.id}
-                      className="bg-white rounded-lg shadow overflow-hidden transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.01]"
+                      className="bg-white rounded-lg shadow overflow-hidden transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.01] min-h-[550px] w-full"
                     >
-                      <div className="h-48 w-full overflow-hidden bg-gray-200 relative">
+                      <div className="h-64 w-full overflow-hidden bg-gray-200 relative">
                         {car.mainImageUrl ? (
                           <img
                             src={car.mainImageUrl}
@@ -1493,7 +1493,7 @@ const Cars = ({ user, db }) => {
                         )}
                       </div>
                       
-                      <div className="p-4">
+                      <div className="p-8">
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">{car.brand} {car.model}</h3>

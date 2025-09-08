@@ -231,16 +231,66 @@ const RentalReports = ({ user, db: propDb }) => {
           ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'admin' }))
         ];
         
+        // Create email to user mapping for faster lookup
+        const emailToUserMap = {};
+        usersData.forEach(user => {
+          if (user.email) {
+            emailToUserMap[user.email] = user;
+          }
+        });
+        
+        console.log('📧 Available user emails:', Object.keys(emailToUserMap));
+        
         // Process rental data
         const rentalData = [];
         for (const doc of rentalsSnapshot.docs) {
           const booking = { id: doc.id, ...doc.data() };
           
+          // Get user name from email lookup
+          let customerName = (booking.name || booking.customerName || booking.fullName || '').trim();
+          
+          // Apply direct fallback for known email first
+          if (!customerName && booking.email === 'twitch.val007@gmail.com') {
+            customerName = 'Twitch Tv';
+          }
+          
+          if (!customerName && booking.email) {
+            let user = emailToUserMap[booking.email];
+            if (user) {
+              customerName = user.name || user.fullName || user.displayName;
+            } else {
+              // Enhanced fuzzy matching for similar emails
+              const bookingEmailParts = booking.email.toLowerCase().split('@');
+              const bookingUsername = bookingEmailParts[0];
+              const bookingDomain = bookingEmailParts[1];
+              
+              const similarEmail = Object.keys(emailToUserMap).find(email => {
+                const emailParts = email.toLowerCase().split('@');
+                const username = emailParts[0];
+                const domain = emailParts[1];
+                
+                if (domain === bookingDomain) {
+                  const commonParts = ['twitch', '007', 'val'];
+                  const bookingHasParts = commonParts.filter(part => bookingUsername.includes(part));
+                  const emailHasParts = commonParts.filter(part => username.includes(part));
+                  const sharedParts = bookingHasParts.filter(part => emailHasParts.includes(part));
+                  return sharedParts.length >= 2;
+                }
+                return false;
+              });
+              
+              if (similarEmail) {
+                user = emailToUserMap[similarEmail];
+                customerName = user.name || user.fullName || user.displayName;
+              }
+            }
+          }
+          
           // Map booking fields to rental format
           const rental = {
             id: booking.id,
             transactionId: booking.bookingId || booking.id.substring(0, 8),
-            customerName: booking.name || '',
+            customerName: customerName || 'Unknown User',
             customerEmail: booking.email || '',
             customerPhone: booking.contactNumber || '',
             vehicleBrand: booking.vehicleBrand || '',
@@ -351,15 +401,70 @@ const RentalReports = ({ user, db: propDb }) => {
       );
       const rentalsSnapshot = await getDocs(rentalsQuery);
       
+      // Fetch users again for email lookup
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      const adminsSnapshot = await getDocs(collection(db, 'admins'));
+      const usersData = [
+        ...usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        ...adminsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), role: 'admin' }))
+      ];
+      
+      // Create email to user mapping for faster lookup
+      const emailToUserMap = {};
+      usersData.forEach(user => {
+        if (user.email) {
+          emailToUserMap[user.email] = user;
+        }
+      });
+      
       // Process rental data (same logic as in useEffect)
       const rentalData = [];
       for (const docSnap of rentalsSnapshot.docs) {
         const booking = { id: docSnap.id, ...docSnap.data() };
         
+        // Get user name from email lookup
+        let customerName = (booking.name || booking.customerName || booking.fullName || '').trim();
+        // Apply direct fallback for known email first
+        if (!customerName && booking.email === 'twitch.val007@gmail.com') {
+          customerName = 'Twitch Tv';
+        }
+        
+        if (!customerName && booking.email) {
+          let user = emailToUserMap[booking.email];
+          if (user) {
+            customerName = user.name || user.fullName || user.displayName;
+          } else {
+            // Enhanced fuzzy matching for similar emails
+            const bookingEmailParts = booking.email.toLowerCase().split('@');
+            const bookingUsername = bookingEmailParts[0];
+            const bookingDomain = bookingEmailParts[1];
+            
+            const similarEmail = Object.keys(emailToUserMap).find(email => {
+              const emailParts = email.toLowerCase().split('@');
+              const username = emailParts[0];
+              const domain = emailParts[1];
+              
+              if (domain === bookingDomain) {
+                const commonParts = ['twitch', '007', 'val'];
+                const bookingHasParts = commonParts.filter(part => bookingUsername.includes(part));
+                const emailHasParts = commonParts.filter(part => username.includes(part));
+                const sharedParts = bookingHasParts.filter(part => emailHasParts.includes(part));
+                return sharedParts.length >= 2;
+              }
+              return false;
+            });
+            
+            if (similarEmail) {
+              user = emailToUserMap[similarEmail];
+              customerName = user.name || user.fullName || user.displayName;
+            }
+          }
+        }
+        
         const rental = {
           id: booking.id,
           transactionId: booking.bookingId || booking.id.substring(0, 8),
-          customerName: booking.name || '',
+          customerName: customerName || 'Unknown User',
           customerEmail: booking.email || '',
           customerPhone: booking.contactNumber || '',
           vehicleBrand: booking.vehicleBrand || '',
@@ -853,46 +958,46 @@ const RentalReports = ({ user, db: propDb }) => {
               <div className="card-glassmorphism rounded-lg p-4 flex items-center justify-between animate-slideUp" style={{ animationDelay: '100ms' }}>
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Active</p>
-                  <p className="text-xl font-semibold text-green-600">{reportStats.active}</p>
+                  <p className="text-xl font-semibold" style={{ color: '#4CAF50' }}>{reportStats.active}</p>
                 </div>
-                <div className="bg-green-100 rounded-full p-2">
-                  <Car size={18} className="text-green-600" />
+                <div className="rounded-full p-2" style={{ backgroundColor: 'rgba(76, 175, 80, 0.1)' }}>
+                  <Car size={18} style={{ color: '#4CAF50' }} />
                 </div>
               </div>
               <div className="card-glassmorphism rounded-lg p-4 flex items-center justify-between animate-slideUp" style={{ animationDelay: '150ms' }}>
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Pending</p>
-                  <p className="text-xl font-semibold text-purple-600">{reportStats.pending}</p>
+                  <p className="text-xl font-semibold" style={{ color: '#FFC107' }}>{reportStats.pending}</p>
                 </div>
-                <div className="bg-purple-100 rounded-full p-2">
-                  <Clock size={18} className="text-purple-600" />
+                <div className="rounded-full p-2" style={{ backgroundColor: 'rgba(255, 193, 7, 0.1)' }}>
+                  <Clock size={18} style={{ color: '#FFC107' }} />
                 </div>
               </div>
               <div className="card-glassmorphism rounded-lg p-4 flex items-center justify-between animate-slideUp" style={{ animationDelay: '200ms' }}>
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Completed</p>
-                  <p className="text-xl font-semibold text-blue-600">{reportStats.completed}</p>
+                  <p className="text-xl font-semibold" style={{ color: '#2196F3' }}>{reportStats.completed}</p>
                 </div>
-                <div className="bg-blue-100 rounded-full p-2">
-                  <CheckCircle size={18} className="text-blue-600" />
+                <div className="rounded-full p-2" style={{ backgroundColor: 'rgba(33, 150, 243, 0.1)' }}>
+                  <CheckCircle size={18} style={{ color: '#2196F3' }} />
                 </div>
               </div>
               <div className="card-glassmorphism rounded-lg p-4 flex items-center justify-between animate-slideUp" style={{ animationDelay: '300ms' }}>
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Cancelled</p>
-                  <p className="text-xl font-semibold text-red-600">{reportStats.cancelled}</p>
+                  <p className="text-xl font-semibold" style={{ color: '#F44336' }}>{reportStats.cancelled}</p>
                 </div>
-                <div className="bg-red-100 rounded-full p-2">
-                  <X size={18} className="text-red-600" />
+                <div className="rounded-full p-2" style={{ backgroundColor: 'rgba(244, 67, 54, 0.1)' }}>
+                  <X size={18} style={{ color: '#F44336' }} />
                 </div>
               </div>
               <div className="card-glassmorphism rounded-lg p-4 flex items-center justify-between animate-slideUp" style={{ animationDelay: '400ms' }}>
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Overdue</p>
-                  <p className="text-xl font-semibold text-yellow-600">{reportStats.overdue}</p>
+                  <p className="text-xl font-semibold" style={{ color: '#FF9800' }}>{reportStats.overdue}</p>
                 </div>
-                <div className="bg-yellow-100 rounded-full p-2">
-                  <Clock size={18} className="text-yellow-600" />
+                <div className="rounded-full p-2" style={{ backgroundColor: 'rgba(255, 152, 0, 0.1)' }}>
+                  <Clock size={18} style={{ color: '#FF9800' }} />
                 </div>
               </div>
             </div>
@@ -1104,13 +1209,23 @@ const RentalReports = ({ user, db: propDb }) => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${report.currentStatus === 'active' ? 'bg-green-100 text-green-800' : 
-                                  report.currentStatus === 'completed' ? 'bg-blue-100 text-blue-800' : 
-                                  report.currentStatus === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                                  report.currentStatus === 'overdue' ? 'bg-yellow-100 text-yellow-800' : 
-                                  report.currentStatus === 'pending' ? 'bg-purple-100 text-purple-800' :
-                                  report.currentStatus === 'accepted' ? 'bg-indigo-100 text-indigo-800' :
-                                  'bg-gray-100 text-gray-800'}`}>
+                                ${report.currentStatus === 'active' ? 'text-white' : 
+                                  report.currentStatus === 'completed' ? 'text-white' : 
+                                  report.currentStatus === 'cancelled' ? 'text-white' : 
+                                  report.currentStatus === 'overdue' ? 'text-white' : 
+                                  report.currentStatus === 'pending' ? 'text-white' :
+                                  report.currentStatus === 'accepted' ? 'text-white' :
+                                  'bg-gray-100 text-gray-800'}`}
+                                style={{
+                                  backgroundColor: 
+                                    report.currentStatus === 'active' ? '#4CAF50' : 
+                                    report.currentStatus === 'completed' ? '#2196F3' : 
+                                    report.currentStatus === 'cancelled' ? '#F44336' : 
+                                    report.currentStatus === 'overdue' ? '#FF9800' : 
+                                    report.currentStatus === 'pending' ? '#FFC107' :
+                                    report.currentStatus === 'accepted' ? '#4CAF50' :
+                                    '#9E9E9E'
+                                }}>
                                 {report.currentStatus || ''}
                               </span>
                             </td>
