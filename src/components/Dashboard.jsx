@@ -1091,47 +1091,7 @@ const Dashboard = ({ user }) => {
                   </div>
                 </div>
 
-                {/* Recent Bookings - Full Width */}
-                <div className="mb-8">
-                  <div className="card-glassmorphism rounded-lg p-6 animate-slideUp" style={{ animationDelay: '500ms' }}>
-                    <div className="flex items-center justify-between mb-6">
-                      <h4 className="text-lg font-semibold text-gray-800 flex items-center">
-                        <FileText size={20} className="mr-2 text-blue-600" />
-                        Recent Bookings
-                      </h4>
-                      <button 
-                        onClick={() => navigate('/reports')}
-                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                      >
-                        View All <Eye size={14} className="ml-1" />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {recentBookings.slice(0, 5).map((booking) => (
-                        <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Car size={16} className="text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-800">{booking.name}</div>
-                              <div className="text-xs text-gray-500">{booking.vehicleBrand} {booking.vehicleModel}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              getStatusDisplay(booking.status).bgColor
-                            } ${getStatusDisplay(booking.status).textColor}`} 
-                            style={getStatusDisplay(booking.status).style}>
-                              {getStatusDisplay(booking.status).text}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">₱{booking.price?.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+
 
 
               </>
