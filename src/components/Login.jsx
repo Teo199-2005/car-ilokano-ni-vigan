@@ -438,7 +438,7 @@ const Login = ({ auth }) => {
                     <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                   </div>
                 ) : (
-                  `LOGIN AS ${selectedRole.toUpperCase()}`
+                  'LOGIN'
                 )}
               </button>
             )}
@@ -460,17 +460,6 @@ const Login = ({ auth }) => {
             Login to Car Rental <br/>
             {selectedRole === 'admin' ? 'Administration Portal' : 'Customer Portal'}
           </p>
-        </div>
-        
-        {/* Role indicator */}
-        <div className="absolute top-8 right-8">
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-            selectedRole === 'admin' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-green-600 text-white'
-          }`}>
-            {selectedRole === 'admin' ? '👨‍💼 Admin Login' : '👤 Customer Login'}
-          </div>
         </div>
       </div>
     </div>

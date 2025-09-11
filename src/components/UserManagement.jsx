@@ -991,6 +991,11 @@ const UserManagement = () => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     return isOwnerOrAdmin && matchesFilter && matchesSearch;
+  }).sort((a, b) => {
+    // Sort by createdAt date, newest first
+    const dateA = a.createdAt?.toDate?.() || new Date(0);
+    const dateB = b.createdAt?.toDate?.() || new Date(0);
+    return dateB - dateA;
   });
 
   // Manual cleanup function for remaining duplicates
@@ -1240,17 +1245,12 @@ const UserManagement = () => {
                             Account Status
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Contact
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Created
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Approval
-                          </th>
+
                           <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions
                           </th>
@@ -1267,10 +1267,15 @@ const UserManagement = () => {
                             <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
                               <td className="px-4 py-4">
                                 <div className="flex items-center">
-                                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                  <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                                     <span className="text-sm font-medium text-gray-600">
                                       {(user.name || user.fullName)?.charAt(0).toUpperCase()}
                                     </span>
+                                    {isPending && (
+                                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                        <Clock size={10} className="text-white" />
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="ml-3 min-w-0">
                                     <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
@@ -1326,20 +1331,6 @@ const UserManagement = () => {
                                 </div>
                               </td>
                               <td className="px-4 py-4">
-                                <button
-                                  onClick={() => handleToggleActiveStatus(user)}
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer hover:opacity-80 ${
-                                    isActive ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                  }`}
-                                  title={`Click to ${isActive ? 'deactivate' : 'activate'} user`}
-                                >
-                                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                                    isActive ? 'bg-green-400' : 'bg-red-400'
-                                  }`}></div>
-                                  {isActive ? 'Active' : 'Inactive'}
-                                </button>
-                              </td>
-                              <td className="px-4 py-4">
                                 <div className="space-y-1">
                                   <div className="flex items-center text-sm text-gray-900">
                                     <Phone size={12} className="mr-2 text-gray-400" />
@@ -1354,28 +1345,7 @@ const UserManagement = () => {
                               <td className="px-4 py-4 text-sm text-gray-500">
                                 {user.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                               </td>
-                              <td className="px-4 py-4 text-center">
-                                {isPending ? (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <button
-                                      onClick={() => handleApproveUser(user)}
-                                      className="bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-700 p-2 rounded-full transition-colors"
-                                      title="Approve User"
-                                    >
-                                      <Check size={16} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectUser(user)}
-                                      className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 p-2 rounded-full transition-colors"
-                                      title="Reject User"
-                                    >
-                                      <X size={16} />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-gray-400">-</span>
-                                )}
-                              </td>
+
                               <td className="px-4 py-4">
                                 <div className="flex items-center justify-center space-x-1">
                                   <button 
@@ -1999,6 +1969,43 @@ const UserManagement = () => {
                       <p className="text-gray-900">
                         {currentUser.updatedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Approval Section - Only show for pending users */}
+                {(currentUser.status || 'pending') === 'pending' && (
+                  <div className="border-t pt-4">
+                    <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                      <Clock size={16} className="mr-2 text-orange-500" />
+                      Account Approval
+                    </h5>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <p className="text-sm text-orange-800 mb-4">
+                        This user is waiting for approval. Review their information and documents before making a decision.
+                      </p>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => {
+                            handleApproveUser(currentUser);
+                            setShowViewModal(false);
+                          }}
+                          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <Check size={16} className="mr-2" />
+                          Approve User
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleRejectUser(currentUser);
+                            setShowViewModal(false);
+                          }}
+                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <X size={16} className="mr-2" />
+                          Reject User
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
