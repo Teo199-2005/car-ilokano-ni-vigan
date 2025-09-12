@@ -80,6 +80,7 @@ const UserManagement = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   const navigate = useNavigate();
   const db = getFirestore();
@@ -2187,6 +2188,18 @@ const UserManagement = () => {
                     </p>
                   </div>
                 </div>
+
+                {currentUser.username && (
+                  <div className="flex items-center space-x-3">
+                    <User size={16} className="text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Username</p>
+                      <p className="text-gray-900 font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                        {currentUser.username}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {currentUser.approvedAt && (
                   <div className="flex items-center space-x-3">
