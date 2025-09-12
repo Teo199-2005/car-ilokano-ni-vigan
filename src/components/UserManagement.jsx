@@ -1224,162 +1224,413 @@ const UserManagement = () => {
                 </div>
               </div>
 
-              {/* Users Table */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            User Info
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Business/Role
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Account Status
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Contact
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Created
-                          </th>
-
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredUsers.map((user, index) => {
-                          const userStatus = user.status || 'pending';
-                          const isVerified = user.isVerified || false;
-                          const isActive = user.isActive === true; // Default to inactive if not specified
-                          const isPending = userStatus === 'pending';
-                          
-                          return (
-                            <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
-                              <td className="px-4 py-4">
-                                <div className="flex items-center">
-                                  <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                    <span className="text-sm font-medium text-gray-600">
-                                      {(user.name || user.fullName)?.charAt(0).toUpperCase()}
-                                    </span>
-                                    {isPending && (
-                                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
-                                        <Clock size={10} className="text-white" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="ml-3 min-w-0">
-                                    <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="space-y-1">
-                                  {user.businessName && (
-                                    <div className="text-xs text-gray-600 truncate">
-                                      {user.businessName}
-                                    </div>
-                                  )}
-                                  <div className={`w-2 h-2 rounded-full inline-block mr-1 ${
-                                    user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'
-                                  }`}></div>
-                                  <span className="text-xs text-gray-700">
-                                    {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="space-y-1">
-                                  <div className="flex items-center">
-                                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                                      userStatus === 'approved' ? 'bg-green-500' :
-                                      userStatus === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
-                                    }`}></div>
-                                    <span className="text-xs text-gray-700">
-                                      {userStatus === 'pending' ? 'Pending' : userStatus.charAt(0).toUpperCase() + userStatus.slice(1)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                                      isVerified ? 'bg-blue-500' : 'bg-gray-400'
-                                    }`}></div>
-                                    <span className="text-xs text-gray-700">
-                                      {isVerified ? 'Verified' : 'Unverified'}
-                                    </span>
-                                  </div>
-                                  {user.role === 'owner' && (
+              {filter === 'all' ? (
+                <>
+                  {/* Owners Table */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <h3 className="text-lg font-medium text-gray-900">Vehicle Owners</h3>
+                    </div>
+                    {loading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                User Info
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Business/Role
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Account Status
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Contact
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Created
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredUsers.filter(user => user.role === 'owner').map((user, index) => {
+                              const userStatus = user.status || 'pending';
+                              const isVerified = user.isVerified || false;
+                              const isPending = userStatus === 'pending';
+                              
+                              return (
+                                <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
+                                  <td className="px-4 py-4">
                                     <div className="flex items-center">
-                                      {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? (
-                                        <FileCheck size={12} className="mr-2 text-green-500" />
-                                      ) : (
-                                        <FileText size={12} className="mr-2 text-gray-400" />
+                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-sm font-medium text-gray-600">
+                                          {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                        </span>
+                                        {isPending && (
+                                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                            <Clock size={10} className="text-white" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="ml-3 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      {user.businessName && (
+                                        <div className="text-xs text-gray-600 truncate">
+                                          {user.businessName}
+                                        </div>
                                       )}
+                                      <div className="w-2 h-2 rounded-full inline-block mr-1 bg-blue-500"></div>
+                                      <span className="text-xs text-gray-700">Owner</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          userStatus === 'approved' ? 'bg-green-500' :
+                                          userStatus === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
+                                        }`}></div>
+                                        <span className="text-xs text-gray-700">
+                                          {userStatus === 'pending' ? 'Pending' : userStatus.charAt(0).toUpperCase() + userStatus.slice(1)}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          isVerified ? 'bg-blue-500' : 'bg-gray-400'
+                                        }`}></div>
+                                        <span className="text-xs text-gray-700">
+                                          {isVerified ? 'Verified' : 'Unverified'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? (
+                                          <FileCheck size={12} className="mr-2 text-green-500" />
+                                        ) : (
+                                          <FileText size={12} className="mr-2 text-gray-400" />
+                                        )}
+                                        <span className="text-xs text-gray-700">
+                                          {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center text-sm text-gray-900">
+                                        <Phone size={12} className="mr-2 text-gray-400" />
+                                        <span>{user.contact || user.contactNumber || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center text-sm text-gray-600">
+                                        <Mail size={12} className="mr-2 text-gray-400" />
+                                        <span className="truncate">{user.email}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-sm text-gray-500">
+                                    {user.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center justify-center space-x-1">
+                                      <button 
+                                        onClick={() => handleViewUser(user)}
+                                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                                        title="View Details"
+                                      >
+                                        <Eye size={16} />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleEditUser(user)}
+                                        className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                                        title="Edit User"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUser(user)}
+                                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                                        title="Delete User"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admins Table */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <h3 className="text-lg font-medium text-gray-900">System Administrators</h3>
+                    </div>
+                    {loading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                User Info
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Contact
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Created
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredUsers.filter(user => user.role === 'admin').map((user, index) => {
+                              return (
+                                <tr key={`${user.source || 'admins'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center">
+                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-sm font-medium text-gray-600">
+                                          {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
+                                      <div className="ml-3 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center text-sm text-gray-900">
+                                        <Phone size={12} className="mr-2 text-gray-400" />
+                                        <span>{user.contact || user.contactNumber || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center text-sm text-gray-600">
+                                        <Mail size={12} className="mr-2 text-gray-400" />
+                                        <span className="truncate">{user.email}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-sm text-gray-500">
+                                    {user.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center justify-center space-x-1">
+                                      <button 
+                                        onClick={() => handleViewUser(user)}
+                                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                                        title="View Details"
+                                      >
+                                        <Eye size={16} />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleEditUser(user)}
+                                        className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                                        title="Edit User"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUser(user)}
+                                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                                        title="Delete User"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* Single Table for Owners Only or Admins Only */
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  {loading ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              User Info
+                            </th>
+                            {filter !== 'admins' && (
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Business/Role
+                              </th>
+                            )}
+                            {filter !== 'admins' && (
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Account Status
+                              </th>
+                            )}
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Contact
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Created
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredUsers.map((user, index) => {
+                            const userStatus = user.status || 'pending';
+                            const isVerified = user.isVerified || false;
+                            const isPending = userStatus === 'pending';
+                            
+                            return (
+                              <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
+                                <td className="px-4 py-4">
+                                  <div className="flex items-center">
+                                    <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-sm font-medium text-gray-600">
+                                        {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                      </span>
+                                      {isPending && (
+                                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                          <Clock size={10} className="text-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="ml-3 min-w-0">
+                                      <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                {filter !== 'admins' && (
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      {user.businessName && (
+                                        <div className="text-xs text-gray-600 truncate">
+                                          {user.businessName}
+                                        </div>
+                                      )}
+                                      <div className={`w-2 h-2 rounded-full inline-block mr-1 ${
+                                        user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'
+                                      }`}></div>
                                       <span className="text-xs text-gray-700">
-                                        {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
+                                        {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
                                       </span>
                                     </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="space-y-1">
-                                  <div className="flex items-center text-sm text-gray-900">
-                                    <Phone size={12} className="mr-2 text-gray-400" />
-                                    <span>{user.contact || user.contactNumber || 'N/A'}</span>
+                                  </td>
+                                )}
+                                {filter !== 'admins' && (
+                                  <td className="px-4 py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          userStatus === 'approved' ? 'bg-green-500' :
+                                          userStatus === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
+                                        }`}></div>
+                                        <span className="text-xs text-gray-700">
+                                          {userStatus === 'pending' ? 'Pending' : userStatus.charAt(0).toUpperCase() + userStatus.slice(1)}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          isVerified ? 'bg-blue-500' : 'bg-gray-400'
+                                        }`}></div>
+                                        <span className="text-xs text-gray-700">
+                                          {isVerified ? 'Verified' : 'Unverified'}
+                                        </span>
+                                      </div>
+                                      {user.role === 'owner' && (
+                                        <div className="flex items-center">
+                                          {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? (
+                                            <FileCheck size={12} className="mr-2 text-green-500" />
+                                          ) : (
+                                            <FileText size={12} className="mr-2 text-gray-400" />
+                                          )}
+                                          <span className="text-xs text-gray-700">
+                                            {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                                <td className="px-4 py-4">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center text-sm text-gray-900">
+                                      <Phone size={12} className="mr-2 text-gray-400" />
+                                      <span>{user.contact || user.contactNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex items-center text-sm text-gray-600">
+                                      <Mail size={12} className="mr-2 text-gray-400" />
+                                      <span className="truncate">{user.email}</span>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center text-sm text-gray-600">
-                                    <Mail size={12} className="mr-2 text-gray-400" />
-                                    <span className="truncate">{user.email}</span>
+                                </td>
+                                <td className="px-4 py-4 text-sm text-gray-500">
+                                  {user.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                                </td>
+                                <td className="px-4 py-4">
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <button 
+                                      onClick={() => handleViewUser(user)}
+                                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                                      title="View Details"
+                                    >
+                                      <Eye size={16} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleEditUser(user)}
+                                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                                      title="Edit User"
+                                    >
+                                      <Edit size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteUser(user)}
+                                      className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                                      title="Delete User"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-sm text-gray-500">
-                                {user.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
-                              </td>
-
-                              <td className="px-4 py-4">
-                                <div className="flex items-center justify-center space-x-1">
-                                  <button 
-                                    onClick={() => handleViewUser(user)}
-                                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                                    title="View Details"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleEditUser(user)}
-                                    className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
-                                    title="Edit User"
-                                  >
-                                    <Edit size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteUser(user)}
-                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
-                                    title="Delete User"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             /* Archived Users Section */

@@ -680,79 +680,44 @@ const RentalReports = ({ user, db: propDb }) => {
       // Create a new workbook
       const wb = XLSX.utils.book_new();
       
-      // Use actual data from state, not calculated stats
-      const actualReports = rentalReports.length;
-      const actualVehicles = vehicles.length;
-      const actualUsers = users.length;
+      // Use filtered data based on current filters
+      const dataToExport = filteredReports;
       
-      console.log('Export Debug:', {
-        rentalReports: rentalReports.length,
-        vehicles: vehicles.length,
-        users: users.length,
-        filteredReports: filteredReports.length,
-        loading: loading
-      });
-      
-      console.log('Sample rental report:', rentalReports[0]);
-      console.log('Sample vehicle:', vehicles[0]);
-      console.log('Sample user:', users[0]);
-      
-      // Calculate actual stats from raw data
-      const actualStats = {
-        total: actualReports,
-        active: rentalReports.filter(r => r.currentStatus === 'active').length,
-        completed: rentalReports.filter(r => r.currentStatus === 'completed').length,
-        cancelled: rentalReports.filter(r => r.currentStatus === 'cancelled').length,
-        overdue: rentalReports.filter(r => r.currentStatus === 'overdue').length,
-        pending: rentalReports.filter(r => r.currentStatus === 'pending' || r.currentStatus === 'accepted').length,
-        totalRevenue: rentalReports.filter(r => r.currentStatus === 'completed').reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0)
+      // Calculate stats from filtered data
+      const exportStats = {
+        total: dataToExport.length,
+        active: dataToExport.filter(r => r.currentStatus === 'active').length,
+        completed: dataToExport.filter(r => r.currentStatus === 'completed').length,
+        cancelled: dataToExport.filter(r => r.currentStatus === 'cancelled').length,
+        overdue: dataToExport.filter(r => r.currentStatus === 'overdue').length,
+        pending: dataToExport.filter(r => r.currentStatus === 'pending' || r.currentStatus === 'accepted').length,
+        totalRevenue: dataToExport.filter(r => r.currentStatus === 'completed').reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0)
       };
       
-      const actualVehicleStats = {
-        total: actualVehicles,
-        available: vehicles.filter(v => v.status === 'Available' || v.status === 'Verified').length,
-        rented: vehicles.filter(v => v.status === 'Rented').length,
-        maintenance: vehicles.filter(v => v.status === 'Maintenance').length
-      };
-      
-      const actualUserStats = {
-        total: actualUsers,
-        owners: users.filter(u => u.role === 'owner').length,
-        admins: users.filter(u => u.role === 'admin').length,
-        clients: users.filter(u => u.role === 'client' || !u.role).length
-      };
+      // Determine report title based on business filter
+      const reportTitle = filterBusiness === 'all' ? 
+        'VIGAN CAR RENTAL - RENTAL ANALYTICS REPORT' : 
+        `${filterBusiness.toUpperCase()} - RENTAL ANALYTICS REPORT`;
       
       // Summary data for the first sheet
       const summaryData = [
-        ['VIGAN CAR RENTAL - RENTAL ANALYTICS REPORT'],
+        [reportTitle],
         ['Generated on:', new Date().toLocaleString()],
         ['Report Period:', `${dateRange.startDate || 'All time'} to ${dateRange.endDate || 'Present'}`],
         ['Status Filter:', filterStatus === 'all' ? 'All Statuses' : filterStatus],
+        ['Business Filter:', filterBusiness === 'all' ? 'All Businesses' : filterBusiness],
         ['Search Term:', searchTerm || 'None'],
         [],
         ['EXECUTIVE SUMMARY'],
-        ['Total Rentals:', actualStats.total],
-        ['Active Rentals:', actualStats.active],
-        ['Completed Rentals:', actualStats.completed],
-        ['Cancelled Rentals:', actualStats.cancelled],
-        ['Overdue Rentals:', actualStats.overdue],
-        ['Pending Rentals:', actualStats.pending],
-        ['Total Revenue:', `₱${actualStats.totalRevenue.toLocaleString()}`],
-        ['Average Duration:', `${actualStats.total > 0 ? Math.round(rentalReports.reduce((sum, r) => sum + (r.duration || 0), 0) / actualStats.total) : 0} days`],
-        ['Success Rate:', `${actualStats.total > 0 ? Math.round((actualStats.completed / actualStats.total) * 100) : 0}%`],
-        [],
-        ['FLEET ANALYSIS'],
-        ['Total Vehicles:', actualVehicleStats.total],
-        ['Available Vehicles:', actualVehicleStats.available],
-        ['Rented Vehicles:', actualVehicleStats.rented],
-        ['Vehicles in Maintenance:', actualVehicleStats.maintenance],
-        ['Vehicle Utilization:', `${actualVehicleStats.total > 0 ? Math.round((actualVehicleStats.rented / actualVehicleStats.total) * 100) : 0}%`],
-        [],
-        ['USER BASE ANALYSIS'],
-        ['Total Users:', actualUserStats.total],
-        ['Vehicle Owners:', actualUserStats.owners],
-        ['Active Clients:', actualUserStats.clients],
-        ['System Administrators:', actualUserStats.admins]
+        ['Total Rentals:', exportStats.total],
+        ['Active Rentals:', exportStats.active],
+        ['Completed Rentals:', exportStats.completed],
+        ['Cancelled Rentals:', exportStats.cancelled],
+        ['Overdue Rentals:', exportStats.overdue],
+        ['Pending Rentals:', exportStats.pending],
+        ['Total Revenue:', `₱${exportStats.totalRevenue.toLocaleString()}`],
+        ['Average Duration:', `${exportStats.total > 0 ? Math.round(dataToExport.reduce((sum, r) => sum + (r.duration || 0), 0) / exportStats.total) : 0} days`],
+        ['Success Rate:', `${exportStats.total > 0 ? Math.round((exportStats.completed / exportStats.total) * 100) : 0}%`]
       ];
       
       // Create summary worksheet
@@ -761,12 +726,12 @@ const RentalReports = ({ user, db: propDb }) => {
       // Style the summary sheet
       summaryWs['!cols'] = [{ width: 25 }, { width: 30 }];
       
-      // Rental records data - use all rental reports, not just filtered
+      // Rental records data - use filtered data
       const recordsData = [
         ['Transaction ID', 'Vehicle', 'Customer Name', 'Customer Email', 'Business Owner', 'Start Date', 'End Date', 'Duration (Days)', 'Status', 'Amount (₱)', 'Created Date']
       ];
       
-      rentalReports.forEach(report => {
+      dataToExport.forEach(report => {
         recordsData.push([
           report.transactionId || report.id.substring(0, 8),
           `${report.vehicleBrand || ''} ${report.vehicleModel || ''}`.trim() || 'N/A',
@@ -804,8 +769,13 @@ const RentalReports = ({ user, db: propDb }) => {
       XLSX.utils.book_append_sheet(wb, summaryWs, 'Executive Summary');
       XLSX.utils.book_append_sheet(wb, recordsWs, 'Rental Records');
       
+      // Generate filename based on business filter
+      const filename = filterBusiness === 'all' ? 
+        `Vigan_Car_Rental_Report_${new Date().toISOString().split('T')[0]}.xlsx` :
+        `${filterBusiness.replace(/[^a-zA-Z0-9]/g, '_')}_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
       // Generate Excel file and download
-      XLSX.writeFile(wb, `Vigan_Car_Rental_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, filename);
       
     } catch (error) {
       console.error('Error generating Excel file:', error);
@@ -837,7 +807,8 @@ const RentalReports = ({ user, db: propDb }) => {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.text('VIGAN CAR RENTAL', pageWidth / 2, 15, { align: 'center' });
+        const headerTitle = filterBusiness === 'all' ? 'VIGAN CAR RENTAL' : filterBusiness.toUpperCase();
+        doc.text(headerTitle, pageWidth / 2, 15, { align: 'center' });
         
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
@@ -882,13 +853,14 @@ const RentalReports = ({ user, db: propDb }) => {
       // Report metadata in a box
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.5);
-      doc.rect(20, currentY - 5, pageWidth - 40, 20);
+      doc.rect(20, currentY - 5, pageWidth - 40, 25);
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Report Period: ${dateRange.startDate || 'All time'} to ${dateRange.endDate || 'Present'}`, 25, currentY);
       doc.text(`Status Filter: ${filterStatus === 'all' ? 'All Statuses' : filterStatus.toUpperCase()}`, 25, currentY + 5);
-      doc.text(`Search Criteria: ${searchTerm || 'None'}`, 25, currentY + 10);
+      doc.text(`Business Filter: ${filterBusiness === 'all' ? 'All Businesses' : filterBusiness}`, 25, currentY + 10);
+      doc.text(`Search Criteria: ${searchTerm || 'None'}`, 25, currentY + 15);
       
       currentY += 25;
       
@@ -1071,8 +1043,13 @@ const RentalReports = ({ user, db: propDb }) => {
         addFooter(1);
       }
       
+      // Generate filename based on business filter
+      const filename = filterBusiness === 'all' ? 
+        `Vigan_Car_Rental_Report_${new Date().toISOString().split('T')[0]}.pdf` :
+        `${filterBusiness.replace(/[^a-zA-Z0-9]/g, '_')}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      
       // Save the PDF
-      doc.save(`Vigan_Car_Rental_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(filename);
       
     } catch (error) {
       console.error('Error generating PDF:', error);

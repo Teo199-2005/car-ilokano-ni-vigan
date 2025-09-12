@@ -5,6 +5,7 @@ import {
   getFirestore, 
   collection, 
   getDocs, 
+  getDoc,
   query, 
   where, 
   orderBy, 
@@ -84,6 +85,7 @@ const Dashboard = ({ user }) => {
     pendingBookings: 0,
     completedBookings: 0
   });
+  const [adminProfile, setAdminProfile] = useState(null);
   const [chartData, setChartData] = useState({
     monthlyBookings: [],
     statusDistribution: [],
@@ -131,6 +133,24 @@ const Dashboard = ({ user }) => {
   
 
   
+  // Fetch admin profile data
+  useEffect(() => {
+    const fetchAdminProfile = async () => {
+      if (user?.uid) {
+        try {
+          const adminRef = doc(db, 'admins', user.uid);
+          const adminSnap = await getDoc(adminRef);
+          if (adminSnap.exists()) {
+            setAdminProfile({ id: adminSnap.id, ...adminSnap.data() });
+          }
+        } catch (error) {
+          console.error('Error fetching admin profile:', error);
+        }
+      }
+    };
+    fetchAdminProfile();
+  }, [user?.uid, db]);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -819,14 +839,22 @@ const Dashboard = ({ user }) => {
                   onClick={() => setShowProfile(!showProfile)}
                   className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none"
                 >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
-                    </span>
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+                    {adminProfile?.profileImage ? (
+                      <img 
+                        src={adminProfile.profileImage} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <span className="text-white text-sm font-medium">
+                        {adminProfile?.name || user?.name ? (adminProfile?.name || user.name).charAt(0).toUpperCase() : 'A'}
+                      </span>
+                    )}
                   </div>
                   <div className="hidden md:block text-left">
-                    <div className="text-sm font-medium">{user?.name || 'Admin User'}</div>
-                    <div className="text-xs text-gray-500">{user?.role || 'Administrator'}</div>
+                    <div className="text-sm font-medium">{adminProfile?.name || user?.name || 'Admin User'}</div>
+                    <div className="text-xs text-gray-500">{adminProfile?.role || user?.role || 'Administrator'}</div>
                   </div>
                 </button>
                 
@@ -835,16 +863,24 @@ const Dashboard = ({ user }) => {
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                          <span className="text-white text-lg font-medium">
-                            {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
-                          </span>
+                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+                          {adminProfile?.profileImage ? (
+                            <img 
+                              src={adminProfile.profileImage} 
+                              alt="Profile" 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <span className="text-white text-lg font-medium">
+                              {adminProfile?.name || user?.name ? (adminProfile?.name || user.name).charAt(0).toUpperCase() : 'A'}
+                            </span>
+                          )}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{user?.name || 'Admin User'}</div>
-                          <div className="text-sm text-gray-500">{user?.email || 'admin@vigancarrental.com'}</div>
+                          <div className="font-medium text-gray-900">{adminProfile?.name || user?.name || 'Admin User'}</div>
+                          <div className="text-sm text-gray-500">{adminProfile?.email || user?.email || 'admin@vigancarrental.com'}</div>
                           <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full inline-block mt-1">
-                            {user?.role || 'Administrator'}
+                            {adminProfile?.role || user?.role || 'Administrator'}
                           </div>
                         </div>
                       </div>

@@ -192,22 +192,26 @@ const Cars = ({ user, db }) => {
   
   // Check if owner has valid documents
   const validateOwnerDocuments = (owner) => {
-    const requiredDocuments = [
-      'businessPermitURL',
-      'businessPermitUrl', // Check both variations
-      'businessRegistrationURL',
-      'registrationFileUrl'
-    ];
+    if (!owner) return false;
     
-    const hasValidDocuments = requiredDocuments.some(field => 
-      owner[field] && owner[field].trim() !== '' && owner[field] !== 'undefined'
-    );
+    // Check for business permit
+    const hasPermit = (owner.businessPermitURL && owner.businessPermitURL.trim() !== '' && owner.businessPermitURL !== 'undefined') ||
+                     (owner.businessPermitUrl && owner.businessPermitUrl.trim() !== '' && owner.businessPermitUrl !== 'undefined');
+    
+    // Check for business registration
+    const hasRegistration = (owner.businessRegistrationURL && owner.businessRegistrationURL.trim() !== '' && owner.businessRegistrationURL !== 'undefined') ||
+                           (owner.registrationFileUrl && owner.registrationFileUrl.trim() !== '' && owner.registrationFileUrl !== 'undefined');
+    
+    // Owner needs BOTH permit AND registration to be considered complete
+    const hasValidDocuments = hasPermit && hasRegistration;
     
     console.log('📄 Document validation for', owner.businessName, ':', {
       businessPermitURL: owner.businessPermitURL || 'missing',
-      businessPermitUrl: owner.businessPermitUrl || 'missing',
+      businessPermitUrl: owner.businessPermitUrl || 'missing', 
       businessRegistrationURL: owner.businessRegistrationURL || 'missing',
       registrationFileUrl: owner.registrationFileUrl || 'missing',
+      hasPermit,
+      hasRegistration,
       hasValidDocuments
     });
     
