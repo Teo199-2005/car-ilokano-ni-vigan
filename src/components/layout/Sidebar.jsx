@@ -426,7 +426,10 @@ const Sidebar = ({ currentPage }) => {
         </div>
         
         <div className="flex items-center justify-center h-16 border-b border-gray-800 px-4">
-          <div className="flex items-center animate-fadeIn logo-container">
+          <div 
+            className="flex items-center animate-fadeIn logo-container cursor-pointer" 
+            onClick={() => navigate('/')}
+          >
             <LogoComponent size={32} className="flex-shrink-0" />
             {!isSidebarCollapsed && (
               <div className="ml-3 flex-1 min-w-0">
@@ -488,7 +491,10 @@ const Sidebar = ({ currentPage }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between h-16 border-b border-gray-800 px-4">
-              <div className="flex items-center logo-container">
+              <div 
+                className="flex items-center logo-container cursor-pointer" 
+                onClick={() => navigate('/')}
+              >
                 <LogoComponent size={32} />
                 <div className="ml-3 flex-1 min-w-0">
                   <TitleComponent />
