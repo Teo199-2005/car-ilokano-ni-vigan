@@ -1,0 +1,87 @@
+/* Notification Styling - Enhanced UI Components */
+
+/* TopbarOwner Notification Dropdown */
+.notification-dropdown {
+  width: 360px;
+  max-height: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Individual Notification Items */
+.notification-item {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+.notification-item:hover {
+  background-color: rgba(243, 244, 246, 0.7) !important;
+}
+
+/* Unread notification styling */
+.notification-unread {
+  background-color: rgba(25, 118, 210, 0.08) !important;
+  border-left: 3px solid #1976d2 !important;
+}
+
+/* Icon containers with type-specific colors */
+.notification-icon-booking-completed {
+  background-color: #4caf50 !important;
+}
+
+.notification-icon-booking-cancelled {
+  background-color: #f44336 !important;
+}
+
+.notification-icon-feedback,
+.notification-icon-review {
+  background-color: #ff9800 !important;
+}
+
+.notification-icon-new-booking,
+.notification-icon-booking-created {
+  background-color: #1976d2 !important;
+}
+
+/* Filter buttons active state */
+.filter-button-active {
+  background-color: white !important;
+  color: #1976d2 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Animation keyframes */
+@keyframes notification-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.notification-pulse {
+  animation: notification-pulse 2s infinite;
+}

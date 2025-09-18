@@ -794,12 +794,9 @@ const Settings = ({ user, auth }) => {
           <div className="container px-4 sm:px-6 py-8 mx-auto">
             {/* Dashboard Header */}
             <div className="mb-6 animate-fadeIn">
-              <div className="flex items-center">
-                <SettingsIcon size={24} className="text-gray-700 mr-3" />
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-1">System Configuration</h2>
-                  <p className="text-gray-500">Configure application settings and preferences</p>
-                </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-1">System Configuration</h2>
+                <p className="text-gray-500">Configure application settings and preferences</p>
               </div>
             </div>
             

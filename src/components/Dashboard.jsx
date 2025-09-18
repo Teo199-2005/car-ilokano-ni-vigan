@@ -15,6 +15,7 @@ import {
   doc
 } from 'firebase/firestore';
 import Sidebar from './layout/Sidebar';
+import TopbarOwner from './TopbarOwner';
 import { 
   Car, 
   User, 
@@ -694,144 +695,38 @@ const Dashboard = ({ user }) => {
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </div>
               
-              {/* Notification Bell */}
-              <div className="relative">
-                <button 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none relative"
-                >
-                  <Bell size={20} />
-                  {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </span>
-                  )}
-                </button>
-                
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-800">Notifications</h3>
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                          onClick={() => {
-                            // Mark all notifications as read
-                            notifications.filter(n => !n.read).forEach(notification => {
-                              if (notification.id && !notification.id.startsWith('booking-') && !notification.id.startsWith('client-') && !notification.id.startsWith('low-availability')) {
-                                markNotificationAsRead(notification.id);
-                              }
-                            });
-                            // For fallback notifications, just update local state
-                            setNotifications(notifications.map(n => ({ ...n, read: true })));
-                            setNotificationCount(0);
-                          }}
-                        >
-                          Mark all read
-                        </button>
-                        <button 
-                          onClick={() => setShowNotifications(false)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                      {notifications.length > 0 ? (
-                        <div className="space-y-1 p-2">
-                          {notifications.map((notification) => (
-                            <div 
-                              key={notification.id} 
-                              className={`p-3 rounded-md notification-item cursor-pointer flex items-start ${notification.read ? 'bg-white' : 'bg-blue-50'}`}
-                              onClick={() => {
-                                if (notification.id && !notification.id.startsWith('booking-') && !notification.id.startsWith('client-') && !notification.id.startsWith('low-availability')) {
-                                  markNotificationAsRead(notification.id);
-                                } else {
-                                  // For fallback notifications, just update local state
-                                  const updatedNotifications = notifications.map(n => 
-                                    n.id === notification.id ? { ...n, read: true } : n
-                                  );
-                                  setNotifications(updatedNotifications);
-                                  setNotificationCount(updatedNotifications.filter(n => !n.read).length);
-                                }
-                                
-                                // Navigate to route if available
-                                if (notification.routePath) {
-                                  navigate(notification.routePath);
-                                }
-                              }}
-                            >
-                              <div className={`p-2 rounded-full ${
-                                notification.type === 'warning' ? 'bg-yellow-100' :
-                                notification.type === 'new_account' ? 'bg-green-100' :
-                                notification.type === 'booking_completed' ? 'bg-blue-100' :
-                                notification.type === 'booking_created' ? 'bg-purple-100' :
-                                notification.read ? 'bg-gray-100' : 'bg-blue-100'
-                              } mr-3 flex-shrink-0`}>
-                                {notification.type === 'warning' ? (
-                                  <AlertTriangle size={14} className="text-yellow-600" />
-                                ) : notification.type === 'new_account' ? (
-                                  <User size={14} className="text-green-600" />
-                                ) : notification.type === 'booking_completed' ? (
-                                  <Check size={14} className="text-blue-600" />
-                                ) : notification.type === 'booking_created' ? (
-                                  <FileText size={14} className="text-purple-600" />
-                                ) : (
-                                  <Bell size={14} className={notification.read ? 'text-gray-600' : 'text-blue-600'} />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex justify-between">
-                                  <div>
-                                    {notification.title && (
-                                      <div className={`text-xs font-medium ${notification.read ? 'text-gray-500' : 'text-gray-700'} mb-1`}>
-                                        {notification.title}
-                                      </div>
-                                    )}
-                                    <p className={`text-sm ${notification.read ? 'text-gray-700' : 'text-gray-900 font-medium'}`}>
-                                      {notification.message}
-                                    </p>
-                                  </div>
-                                  {!notification.read && (
-                                    <span className="h-2 w-2 bg-blue-500 rounded-full ml-2 mt-1.5 flex-shrink-0"></span>
-                                  )}
-                                </div>
-                                <span className="text-xs text-gray-400">{notification.timeFormatted || notification.time}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-6 text-center">
-                          <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                            <Bell size={20} className="text-gray-400" />
-                          </div>
-                          <p className="text-gray-500">No notifications available</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {notifications.length > 0 && (
-                      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-center">
-                        <button 
-                          className="text-sm text-red-600 hover:text-red-800 focus:outline-none"
-                          onClick={() => {
-                            if (window.confirm('Are you sure you want to clear all notifications?')) {
-                              setNotifications([]);
-                              setNotificationCount(0);
-                            }
-                          }}
-                        >
-                          Clear All Notifications
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Notification Bell - Using TopbarOwner Component */}
+              <TopbarOwner 
+                notifications={notifications}
+                notificationCount={notificationCount}
+                onMarkAsRead={(notificationId) => {
+                  if (notificationId && !notificationId.startsWith('booking-') && !notificationId.startsWith('client-') && !notificationId.startsWith('low-availability')) {
+                    markNotificationAsRead(notificationId);
+                  } else {
+                    // For fallback notifications, just update local state
+                    const updatedNotifications = notifications.map(n => 
+                      n.id === notificationId ? { ...n, read: true } : n
+                    );
+                    setNotifications(updatedNotifications);
+                    setNotificationCount(updatedNotifications.filter(n => !n.read).length);
+                  }
+                }}
+                onMarkAllAsRead={() => {
+                  // Mark all notifications as read
+                  notifications.filter(n => !n.read).forEach(notification => {
+                    if (notification.id && !notification.id.startsWith('booking-') && !notification.id.startsWith('client-') && !notification.id.startsWith('low-availability')) {
+                      markNotificationAsRead(notification.id);
+                    }
+                  });
+                  // For fallback notifications, just update local state
+                  setNotifications(notifications.map(n => ({ ...n, read: true })));
+                  setNotificationCount(0);
+                }}
+                onClearAll={() => {
+                  setNotifications([]);
+                  setNotificationCount(0);
+                }}
+              />
               
               {/* Admin Profile */}
               <div className="relative">

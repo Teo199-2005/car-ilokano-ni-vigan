@@ -16,9 +16,11 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Cars from './components/Cars';
 import UserManagement from './components/UserManagement';
+import Reviews from './components/Reviews';
 import RentalReports from './components/RentalReports';
 import Settings from './components/Settings';
 import AdminProfile from './components/AdminProfile';
+import NotificationsPage from './components/NotificationsPage';
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -68,7 +70,9 @@ function App() {
           <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/cars" element={user ? <Cars user={user} db={db} /> : <Navigate to="/login" />} />
           <Route path="/users" element={user ? <UserManagement user={user} db={db} /> : <Navigate to="/login" />} />
+          <Route path="/reviews" element={user ? <Reviews user={user} db={db} /> : <Navigate to="/login" />} />
           <Route path="/reports" element={user ? <RentalReports user={user} db={db} /> : <Navigate to="/login" />} />
+          <Route path="/notifications" element={user ? <NotificationsPage user={user} db={db} /> : <Navigate to="/login" />} />
           <Route path="/settings" element={user ? <Settings user={user} auth={auth} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={user ? <AdminProfile user={user} auth={auth} db={db} /> : <Navigate to="/login" />} />
         </Routes>

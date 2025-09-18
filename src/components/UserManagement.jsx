@@ -2225,6 +2225,27 @@ const UserManagement = () => {
                   </div>
                 )}
 
+                {currentUser.password && (
+                  <div className="flex items-center space-x-3">
+                    <Eye size={16} className="text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-500">Password</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-gray-900 font-mono text-sm bg-gray-100 px-2 py-1 rounded flex-1">
+                          {showUserPassword ? currentUser.password : '••••••••'}
+                        </p>
+                        <button
+                          onClick={() => setShowUserPassword(!showUserPassword)}
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                          title={showUserPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showUserPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {currentUser.updatedAt && (
                   <div className="flex items-center space-x-3">
                     <Calendar size={16} className="text-gray-400" />

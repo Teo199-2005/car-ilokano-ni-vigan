@@ -13,7 +13,9 @@ import {
   X,
   Car,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Star,
+  Bell
 } from 'lucide-react';
 
 const Sidebar = ({ currentPage }) => {
@@ -184,7 +186,9 @@ const Sidebar = ({ currentPage }) => {
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} />, id: 'dashboard' },
     { name: 'Vehicles', path: '/cars', icon: <Car size={20} />, id: 'cars' },
     { name: 'User Management', path: '/users', icon: <Users size={20} />, id: 'users' },
+    { name: 'Reviews', path: '/reviews', icon: <Star size={20} />, id: 'reviews' },
     { name: 'Total Bookings', path: '/reports', icon: <FileText size={20} />, id: 'reports' },
+    { name: 'Notifications', path: '/notifications', icon: <Bell size={20} />, id: 'notifications' },
     { name: 'Settings', path: '/settings', icon: <Settings size={20} />, id: 'settings' },
   ];
 

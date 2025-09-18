@@ -26,11 +26,206 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Star,
+  MessageCircle
 } from 'lucide-react';
 
 // Import your Firebase storage instance
 import { storage } from '../firebase'; // Update this path to match your firebase config file location
+
+// Owner Rating Component
+const OwnerRating = ({ businessName, database }) => {
+  const [rating, setRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOwnerRating = async () => {
+      if (!businessName || !database) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const reviewsCollection = collection(database, 'reviews');
+        const reviewsQuery = query(reviewsCollection, where('ownerBusinessName', '==', businessName));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        
+        const reviews = reviewsSnapshot.docs.map(doc => doc.data());
+        
+        if (reviews.length > 0) {
+          const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+          const avgRating = totalRating / reviews.length;
+          setRating(avgRating);
+          setReviewCount(reviews.length);
+        }
+      } catch (error) {
+        console.error('Error fetching owner rating:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOwnerRating();
+  }, [businessName, database]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center text-xs text-gray-400">
+        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse mr-1"></div>
+        <span>...</span>
+      </div>
+    );
+  }
+
+  if (reviewCount === 0) {
+    return (
+      <div className="flex items-center text-xs text-gray-400">
+        <Star size={12} className="mr-1" />
+        <span>No reviews</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center text-xs text-gray-600">
+      <Star size={12} className="text-yellow-400 fill-current mr-1" />
+      <span>{rating.toFixed(1)} ({reviewCount})</span>
+    </div>
+  );
+};
+
+// Owner Reviews Section Component
+const OwnerReviewsSection = ({ businessName, database }) => {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOwnerReviews = async () => {
+      if (!businessName || !database) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const reviewsCollection = collection(database, 'reviews');
+        const reviewsQuery = query(
+          reviewsCollection, 
+          where('ownerBusinessName', '==', businessName)
+        );
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        
+        const reviewsList = reviewsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Sort by creation date (newest first) and limit to 3
+        const sortedReviews = reviewsList
+          .sort((a, b) => {
+            const aTime = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+            const bTime = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+            return bTime - aTime;
+          })
+          .slice(0, 3);
+        
+        setReviews(sortedReviews);
+      } catch (error) {
+        console.error('Error fetching owner reviews:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOwnerReviews();
+  }, [businessName, database]);
+
+  const renderStars = (rating) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={12}
+        className={`${
+          index < rating 
+            ? 'text-yellow-400 fill-current' 
+            : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+          <Star className="mr-2" size={18} />
+          Recent Reviews
+        </h4>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-gray-50 rounded-lg p-3 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <div>
+        <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+          <Star className="mr-2" size={18} />
+          Recent Reviews
+        </h4>
+        <div className="text-center py-4 text-gray-500">
+          <Star size={24} className="mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">No reviews yet for this owner</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+        <Star className="mr-2" size={18} />
+        Recent Reviews ({reviews.length})
+      </h4>
+      <div className="space-y-3 max-h-64 overflow-y-auto">
+        {reviews.map(review => (
+          <div key={review.id} className="bg-gray-50 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                {renderStars(review.rating)}
+                <span className="ml-2 text-sm font-medium text-gray-700">
+                  {review.reviewerName}
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">
+                {review.createdAt?.toDate ? 
+                  review.createdAt.toDate().toLocaleDateString() : 
+                  'Recently'
+                }
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {review.comment}
+            </p>
+            {review.helpful > 0 && (
+              <div className="mt-2 text-xs text-gray-500">
+                {review.helpful} people found this helpful
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // Peso icon component
 const PesoIcon = ({ size = 18, className = '' }) => (
@@ -1314,11 +1509,22 @@ const Cars = ({ user, db }) => {
       <div className="min-h-screen bg-gray-100">
         <Sidebar currentPage="cars" />
         
-        <div className="lg:pl-64 flex flex-col flex-1">
-          <div className="py-3">
-            <div className="max-w-full mx-auto px-3">
-              <h1 className="text-2xl font-semibold text-gray-900">Vehicle Listings</h1>
+        <div className="flex-1 flex flex-col overflow-hidden ml-0 lg:ml-64">
+          {/* Header */}
+          <header className="bg-white shadow-sm border-b border-gray-200">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Vehicle Listings</h1>
+                  <p className="text-gray-600">Search vehicles, permits...</p>
+                </div>
+              </div>
             </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="container mx-auto">
             
             {userStatus === 'pending' && user.role === 'owner' && (
               <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-4">
@@ -1531,7 +1737,7 @@ const Cars = ({ user, db }) => {
                           )}
                         </div>
                         
-                        <div className="mt-2 flex items-center">
+                        <div className="mt-2 flex items-center justify-between">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             car.status === 'Verified' ? 'bg-gray-100 text-black' :
                             car.status === 'Not Verified' ? 'bg-red-100 text-red-800' :
@@ -1542,6 +1748,7 @@ const Cars = ({ user, db }) => {
                             {car.status === 'Not Verified' && <AlertTriangle size={12} className="mr-1" />}
                             {car.status}
                           </span>
+                          <OwnerRating businessName={car.businessName} database={db} />
                         </div>
                         
                         <div className="mt-4 flex flex-wrap gap-2">
@@ -1644,7 +1851,8 @@ const Cars = ({ user, db }) => {
                 </div>
               )}
             </div>
-          </div>
+            </div>
+          </main>
         </div>
         
         {/* Add/Edit Car Modal */}
@@ -2592,9 +2800,12 @@ const Cars = ({ user, db }) => {
                           Business Information
                         </h4>
                         <div className="space-y-2">
-                          <div className="flex items-center">
-                            <span className="font-medium text-gray-700 w-20">Business:</span>
-                            <span className="text-gray-900">{carToView.businessName}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="font-medium text-gray-700 w-20">Business:</span>
+                              <span className="text-gray-900">{carToView.businessName}</span>
+                            </div>
+                            <OwnerRating businessName={carToView.businessName} database={db} />
                           </div>
                           {carToView.uid && (
                             <div className="flex items-center">
@@ -2604,6 +2815,9 @@ const Cars = ({ user, db }) => {
                           )}
                         </div>
                       </div>
+                      
+                      {/* Owner Reviews Section */}
+                      <OwnerReviewsSection businessName={carToView.businessName} database={db} />
                       
                       {/* Description */}
                       {carToView.description && (

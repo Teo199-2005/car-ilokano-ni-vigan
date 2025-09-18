@@ -1072,7 +1072,7 @@ const RentalReports = ({ user, db: propDb }) => {
               >
                 <ArrowLeft size={20} />
               </button>
-              <h1 className="text-xl font-semibold text-gray-800">Rental Reports</h1>
+              <h1 className="text-xl font-semibold text-gray-800">Total Bookings</h1>
             </div>
             
             <div className="flex items-center space-x-4">
