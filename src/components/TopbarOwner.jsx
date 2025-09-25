@@ -111,7 +111,6 @@ const TopbarOwner = ({ notifications = [], notificationCount = 0, onMarkAsRead, 
                     }`}
                     onClick={() => {
                       onMarkAsRead?.(notification.id);
-                      navigate('/notifications');
                     }}
                   >
                     {/* Icon */}
@@ -164,7 +163,16 @@ const TopbarOwner = ({ notifications = [], notificationCount = 0, onMarkAsRead, 
           
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-center">
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-between">
+              <button 
+                className="text-sm text-blue-600 hover:text-blue-800 focus:outline-none transition-colors duration-200"
+                onClick={() => {
+                  navigate('/notifications');
+                  setShowNotifications(false);
+                }}
+              >
+                View All
+              </button>
               <button 
                 className="text-sm text-red-600 hover:text-red-800 focus:outline-none transition-colors duration-200"
                 onClick={() => {

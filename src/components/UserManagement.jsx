@@ -71,7 +71,8 @@ const UserManagement = () => {
     confirmPassword: '',
     businessPermit: null,
     businessRegistration: null,
-    adminProfile: null
+    adminProfile: null,
+    hasPermit: true
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -431,7 +432,8 @@ const UserManagement = () => {
         confirmPassword: '',
         businessPermit: null,
         businessRegistration: null,
-        adminProfile: null
+        adminProfile: null,
+        hasPermit: true
       });
       setFormErrors({});
       setShowAddModal(false);
@@ -561,6 +563,7 @@ const UserManagement = () => {
   const handleEditUser = (user) => {
     console.log('🔧 Editing user:', user);
     setCurrentUser(user);
+    const hasPermitDocs = Boolean(user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url);
     setFormData({
       businessName: user.businessName || '',
       name: user.name || '',
@@ -568,7 +571,8 @@ const UserManagement = () => {
       contact: user.contact || '',
       address: user.address || '',
       role: user.role || 'owner',
-      password: '' // Don't pre-fill password for security
+      password: '', // Don't pre-fill password for security
+      hasPermit: user.hasPermit !== undefined ? user.hasPermit : hasPermitDocs
     });
     setShowEditModal(true);
   };
@@ -633,6 +637,7 @@ const UserManagement = () => {
         address: formData.address,
         businessPermitURL,
         businessRegistrationURL,
+        hasPermit: formData.hasPermit,
         isVerified: shouldAutoVerify,
         updatedAt: Timestamp.now()
       };
@@ -709,7 +714,8 @@ const UserManagement = () => {
         contact: '',
         address: '',
         role: 'owner',
-        password: ''
+        password: '',
+        hasPermit: true
       });
       setFormErrors({});
     } catch (error) {
@@ -1098,6 +1104,7 @@ const UserManagement = () => {
   useEffect(() => {
     if (currentUser && showEditModal) {
       console.log('🔄 Syncing form data with current user:', currentUser);
+      const hasPermitDocs = Boolean(currentUser.businessPermitURL || currentUser.businessRegistrationURL || currentUser.businessDocuments?.permit?.url || currentUser.businessDocuments?.registration?.url);
       setFormData({
         businessName: currentUser.businessName || '',
         name: currentUser.name || currentUser.fullName || '',
@@ -1105,7 +1112,8 @@ const UserManagement = () => {
         contact: currentUser.contact || currentUser.contactNumber || '',
         address: currentUser.address || '',
         role: currentUser.role || 'owner',
-        password: ''
+        password: '',
+        hasPermit: currentUser.hasPermit !== undefined ? currentUser.hasPermit : hasPermitDocs
       });
     }
   }, [currentUser, showEditModal]);
@@ -1271,10 +1279,18 @@ const UserManagement = () => {
                                 <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center">
-                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                        <span className="text-sm font-medium text-gray-600">
-                                          {(user.name || user.fullName)?.charAt(0).toUpperCase()}
-                                        </span>
+                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        {user.profileImageUrl || user.profileImage ? (
+                                          <img 
+                                            src={user.profileImageUrl || user.profileImage} 
+                                            alt={user.name || user.fullName || 'User'} 
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-sm font-medium text-gray-600">
+                                            {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                          </span>
+                                        )}
                                         {isPending && (
                                           <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
                                             <Clock size={10} className="text-white" />
@@ -1323,7 +1339,7 @@ const UserManagement = () => {
                                           <FileText size={12} className="mr-2 text-gray-400" />
                                         )}
                                         <span className="text-xs text-gray-700">
-                                          {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
+                                          {user.hasPermit !== undefined ? (user.hasPermit ? 'Has Permit' : 'No Permit') : (user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit')}
                                         </span>
                                       </div>
                                     </div>
@@ -1411,10 +1427,18 @@ const UserManagement = () => {
                                 <tr key={`${user.source || 'admins'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
                                   <td className="px-4 py-4">
                                     <div className="flex items-center">
-                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                        <span className="text-sm font-medium text-gray-600">
-                                          {(user.name || user.fullName)?.charAt(0).toUpperCase()}
-                                        </span>
+                                      <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        {user.profileImageUrl || user.profileImage || user.adminProfileURL ? (
+                                          <img 
+                                            src={user.profileImageUrl || user.profileImage || user.adminProfileURL} 
+                                            alt={user.name || user.fullName || 'User'} 
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-sm font-medium text-gray-600">
+                                            {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="ml-3 min-w-0">
                                         <div className="text-sm font-medium text-gray-900 truncate">{user.name || user.fullName || 'N/A'}</div>
@@ -1516,10 +1540,18 @@ const UserManagement = () => {
                               <tr key={`${user.source || 'users'}-${user.id}-${user.email}-${index}`} className="hover:bg-gray-50">
                                 <td className="px-4 py-4">
                                   <div className="flex items-center">
-                                    <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-sm font-medium text-gray-600">
-                                        {(user.name || user.fullName)?.charAt(0).toUpperCase()}
-                                      </span>
+                                    <div className="relative h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                      {user.profileImageUrl || user.profileImage || user.adminProfileURL ? (
+                                        <img 
+                                          src={user.profileImageUrl || user.profileImage || user.adminProfileURL} 
+                                          alt={user.name || user.fullName || 'User'} 
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-sm font-medium text-gray-600">
+                                          {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                        </span>
+                                      )}
                                       {isPending && (
                                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
                                           <Clock size={10} className="text-white" />
@@ -1576,7 +1608,7 @@ const UserManagement = () => {
                                             <FileText size={12} className="mr-2 text-gray-400" />
                                           )}
                                           <span className="text-xs text-gray-700">
-                                            {user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit'}
+                                            {user.hasPermit !== undefined ? (user.hasPermit ? 'Has Permit' : 'No Permit') : (user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url ? 'Has Permit' : 'No Permit')}
                                           </span>
                                         </div>
                                       )}
@@ -1664,10 +1696,18 @@ const UserManagement = () => {
                       <tr key={`archived-${user.id}-${index}`} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-600">
-                                {(user.name || user.fullName)?.charAt(0).toUpperCase()}
-                              </span>
+                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                              {user.profileImageUrl || user.profileImage || user.adminProfileURL ? (
+                                <img 
+                                  src={user.profileImageUrl || user.profileImage || user.adminProfileURL} 
+                                  alt={user.name || user.fullName || 'User'} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-sm font-medium text-gray-600">
+                                  {(user.name || user.fullName)?.charAt(0).toUpperCase()}
+                                </span>
+                              )}
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-500">{user.name || user.fullName}</div>
@@ -2032,6 +2072,35 @@ const UserManagement = () => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Has Permit Radio Button */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Permit Status</label>
+                    <div className="flex items-center space-x-6">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="hasPermit"
+                          value="yes"
+                          checked={formData.hasPermit === true}
+                          onChange={() => setFormData({...formData, hasPermit: true})}
+                          className="mr-2 text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">Has Permit</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="hasPermit"
+                          value="no"
+                          checked={formData.hasPermit === false}
+                          onChange={() => setFormData({...formData, hasPermit: false})}
+                          className="mr-2 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700">No Permit</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2103,10 +2172,18 @@ const UserManagement = () => {
             
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-xl font-medium text-gray-600">
-                    {currentUser.name?.charAt(0).toUpperCase()}
-                  </span>
+                <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  {currentUser.profileImageUrl || currentUser.profileImage || currentUser.adminProfileURL ? (
+                    <img 
+                      src={currentUser.profileImageUrl || currentUser.profileImage || currentUser.adminProfileURL} 
+                      alt={currentUser.name || 'User'} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl font-medium text-gray-600">
+                      {currentUser.name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h4 className="text-xl font-semibold text-gray-900">{currentUser.name}</h4>

@@ -189,48 +189,17 @@ const Dashboard = ({ user }) => {
         
 
         
-        // Fetch rental data from database
+        // Fetch rental data from bookings collection (same as Total Bookings page)
         let bookingsData = [];
         try {
-          const rentalsQuery = query(
-            collection(db, 'rentals'),
-            orderBy('createdAt', 'desc')
+          const bookingsQuery = query(
+            collection(db, 'bookings'),
+            orderBy('timestamp', 'desc')
           );
-          const rentalsSnapshot = await getDocs(rentalsQuery);
-          
-          if (!rentalsSnapshot.empty) {
-            bookingsData = rentalsSnapshot.docs.map(doc => {
-              const rental = { id: doc.id, ...doc.data() };
-              // Map rental fields to booking format
-              return {
-                id: rental.id,
-                name: rental.customerName || rental.clientName || 'N/A',
-                email: rental.customerEmail || rental.clientEmail || 'N/A',
-                businessName: rental.ownerBusinessName || rental.businessName || 'N/A',
-                startDate: rental.startDate,
-                endDate: rental.endDate,
-                price: rental.totalAmount || rental.price || 0,
-                status: rental.status || 'pending',
-                vehicleBrand: rental.vehicleBrand,
-                vehicleModel: rental.vehicleModel,
-                plateNumber: rental.plateNumber,
-                timestamp: rental.createdAt || rental.timestamp
-              };
-            });
-          }
+          const bookingsSnapshot = await getDocs(bookingsQuery);
+          bookingsData = bookingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         } catch (error) {
-          console.log('Error fetching rentals:', error);
-          // Fallback to bookings collection if rentals doesn't exist
-          try {
-            const bookingsQuery = query(
-              collection(db, 'bookings'),
-              orderBy('timestamp', 'desc')
-            );
-            const bookingsSnapshot = await getDocs(bookingsQuery);
-            bookingsData = bookingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          } catch (bookingError) {
-            console.log('No rental data found:', bookingError);
-          }
+          console.log('Error fetching bookings:', error);
         }
         
         const totalBookings = bookingsData.length;
@@ -263,21 +232,53 @@ const Dashboard = ({ user }) => {
           { name: 'Overdue', value: overdueBookings, color: '#EF4444' }
         ].filter(item => item.value > 0);
         
-        const monthlyBookings = [
-          { month: 'Jan', bookings: 12, revenue: 180000 },
-          { month: 'Feb', bookings: 19, revenue: 285000 },
-          { month: 'Mar', bookings: 15, revenue: 225000 },
-          { month: 'Apr', bookings: 22, revenue: 330000 },
-          { month: 'May', bookings: 18, revenue: 270000 },
-          { month: 'Jun', bookings: totalBookings, revenue: totalRevenue }
-        ];
+        // Generate actual monthly bookings data from real data
+        const monthlyBookingsMap = {};
+        const currentYear = new Date().getFullYear();
         
-        const topBusinesses = [
-          { name: "camila's Car Rental", bookings: 3, revenue: 173000 },
-          { name: 'Kamie Rental', bookings: 2, revenue: 125000 },
-          { name: 'Vigan Auto Rentals', bookings: 8, revenue: 240000 },
-          { name: 'City Car Hire', bookings: 5, revenue: 150000 }
-        ];
+        // Initialize all months with 0
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        monthNames.forEach(month => {
+          monthlyBookingsMap[month] = { bookings: 0, revenue: 0 };
+        });
+        
+        // Count actual bookings by month
+        bookingsData.forEach(booking => {
+          if (booking.timestamp) {
+            const bookingDate = booking.timestamp.toDate ? booking.timestamp.toDate() : new Date(booking.timestamp);
+            if (bookingDate.getFullYear() === currentYear) {
+              const monthName = monthNames[bookingDate.getMonth()];
+              monthlyBookingsMap[monthName].bookings++;
+              if (booking.status === 'completed') {
+                monthlyBookingsMap[monthName].revenue += parseFloat(booking.price || booking.totalAmount || 0);
+              }
+            }
+          }
+        });
+        
+        const monthlyBookings = monthNames.map(month => ({
+          month,
+          bookings: monthlyBookingsMap[month].bookings,
+          revenue: monthlyBookingsMap[month].revenue
+        }));
+        
+        // Generate actual top businesses data from real data
+        const businessStats = {};
+        bookingsData.forEach(booking => {
+          const businessName = booking.ownerBusinessName || booking.businessName || 'Unknown Business';
+          if (!businessStats[businessName]) {
+            businessStats[businessName] = { bookings: 0, revenue: 0 };
+          }
+          businessStats[businessName].bookings++;
+          if (booking.status === 'completed') {
+            businessStats[businessName].revenue += parseFloat(booking.price || booking.totalAmount || 0);
+          }
+        });
+        
+        const topBusinesses = Object.entries(businessStats)
+          .map(([name, stats]) => ({ name, ...stats }))
+          .sort((a, b) => b.bookings - a.bookings)
+          .slice(0, 4);
         
         // Calculate car type distribution with all types
         const allCarTypes = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Pickup', 'Van'];
