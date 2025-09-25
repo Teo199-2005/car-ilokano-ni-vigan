@@ -161,10 +161,16 @@ const UserManagement = () => {
       needsUpdate = true;
     }
     
-    // Auto-verify owners with permits who are approved
-    if (user.role === 'owner' && user.status === 'approved' && !user.isVerified && (user.businessPermitURL || user.businessRegistrationURL)) {
-      updates.isVerified = true;
-      needsUpdate = true;
+    // Auto-verify owners: Approved + Has Permit = Verified
+    if (user.role === 'owner' && user.status === 'approved') {
+      const hasPermits = Boolean(user.businessPermitURL || user.businessRegistrationURL || user.businessDocuments?.permit?.url || user.businessDocuments?.registration?.url);
+      const hasPermitFlag = user.hasPermit !== false; // Default to true if undefined
+      const shouldBeVerified = hasPermits && hasPermitFlag;
+      
+      if (user.isVerified !== shouldBeVerified) {
+        updates.isVerified = shouldBeVerified;
+        needsUpdate = true;
+      }
     }
 
     if (needsUpdate) {
@@ -201,10 +207,10 @@ const UserManagement = () => {
 
       const allUsers = [...usersData, ...adminsData];
       
-      // Auto-update disabled temporarily to fix business name issue
-      // for (const user of allUsers) {
-      //   await autoUpdateUserStatus(user);
-      // }
+      // Auto-update user verification status
+      for (const user of allUsers) {
+        await autoUpdateUserStatus(user);
+      }
       
       // Refetch after updates
       const updatedUsersSnapshot = await getDocs(collection(db, 'users'));
@@ -625,9 +631,10 @@ const UserManagement = () => {
         businessRegistrationURL = await getDownloadURL(registrationRef);
       }
       
-      // Auto-verify if user is active, approved, and has permits
-      const hasPermits = businessPermitURL || businessRegistrationURL || currentUser.businessDocuments?.permit?.url || currentUser.businessDocuments?.registration?.url;
-      const shouldAutoVerify = currentUser.isActive && currentUser.status === 'approved' && hasPermits;
+      // Auto-verify logic: Approved + Has Permit = Verified
+      const hasPermits = Boolean(businessPermitURL || businessRegistrationURL || currentUser.businessDocuments?.permit?.url || currentUser.businessDocuments?.registration?.url);
+      const isApproved = currentUser.status === 'approved';
+      const shouldBeVerified = isApproved && hasPermits && formData.hasPermit !== false;
       
       const updateData = {
         businessName: formData.businessName || '',
@@ -638,7 +645,7 @@ const UserManagement = () => {
         businessPermitURL,
         businessRegistrationURL,
         hasPermit: formData.hasPermit,
-        isVerified: shouldAutoVerify,
+        isVerified: shouldBeVerified,
         updatedAt: Timestamp.now()
       };
 
