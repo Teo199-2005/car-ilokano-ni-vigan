@@ -1155,7 +1155,7 @@ const UserManagement = () => {
       
       <div className="flex-1 flex flex-col overflow-hidden ml-0 lg:ml-64">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-white shadow-md border-b border-gray-200">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>

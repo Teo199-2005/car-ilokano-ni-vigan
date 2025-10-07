@@ -1511,7 +1511,7 @@ const Cars = ({ user, db }) => {
         
         <div className="flex-1 flex flex-col overflow-hidden ml-0 lg:ml-64">
           {/* Header */}
-          <header className="bg-white shadow-sm border-b border-gray-200">
+          <header className="bg-white shadow-md border-b border-gray-200">
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -1523,8 +1523,8 @@ const Cars = ({ user, db }) => {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="container mx-auto">
+          <main className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="max-w-7xl mx-auto">
             
             {userStatus === 'pending' && user.role === 'owner' && (
               <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-4">
@@ -1549,9 +1549,9 @@ const Cars = ({ user, db }) => {
               </div>
             )}
             
-            <div className="max-w-full mx-auto px-3">
               {/* Search, Filter and Add Car */}
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center my-2 space-y-2 lg:space-y-0 lg:space-x-4">
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-4">
                 <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4 w-full lg:w-auto">
                   {/* Search Input */}
                   <div className="relative w-full md:w-64">
@@ -1600,11 +1600,12 @@ const Cars = ({ user, db }) => {
                 
                 <button
                   onClick={openAddModal}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   <Plus size={18} className="mr-2" />
                   Add New Vehicle
                 </button>
+                </div>
               </div>
               
               {/* Results Summary */}
@@ -1623,7 +1624,7 @@ const Cars = ({ user, db }) => {
                   <p className="text-gray-500">Loading vehicles...</p>
                 </div>
               ) : filteredCars.length === 0 ? (
-                <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow p-8 h-64">
+                <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-md border border-gray-200 p-8 h-64">
                   <Car size={48} className="text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No vehicles found</h3>
                   <p className="text-gray-500 text-center mb-4">
@@ -1654,11 +1655,11 @@ const Cars = ({ user, db }) => {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 mt-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {currentCars.map((car) => (
                     <div
                       key={car.id}
-                      className="bg-white rounded-lg shadow overflow-hidden transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.01] min-h-[550px] w-full"
+                      className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-lg hover:transform hover:scale-[1.02] min-h-[550px] w-full"
                     >
                       <div className="h-64 w-full overflow-hidden bg-gray-200 relative">
                         {car.mainImageUrl ? (
@@ -1703,7 +1704,7 @@ const Cars = ({ user, db }) => {
                         )}
                       </div>
                       
-                      <div className="p-8">
+                      <div className="p-6">
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">{car.brand} {car.model}</h3>
@@ -1784,7 +1785,8 @@ const Cars = ({ user, db }) => {
               
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center mt-8 space-x-2">
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                  <div className="flex justify-center items-center space-x-2">
                   <button
                     onClick={() => paginate(currentPage - 1)}
                     disabled={currentPage === 1}
@@ -1826,8 +1828,10 @@ const Cars = ({ user, db }) => {
                     Next
                     <ChevronRight size={16} className="ml-1" />
                   </button>
+                  </div>
                 </div>
               )}
+
               
               {/* Simple Success/Error Messages */}
               {submitSuccess && (
@@ -1851,7 +1855,6 @@ const Cars = ({ user, db }) => {
                 </div>
               )}
             </div>
-            </div>
           </main>
         </div>
         
@@ -1865,7 +1868,7 @@ const Cars = ({ user, db }) => {
               
               <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
               
-              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle responsive-modal sm:w-full">
+              <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle responsive-modal sm:w-full border border-gray-200">
                 <div className="animate-fadeIn">
                   <div className="bg-white px-6 pt-6 pb-4 sm:p-8 modal-container-fix">
                     <div className="mb-6">
@@ -1889,7 +1892,7 @@ const Cars = ({ user, db }) => {
                     <div className="modal-content-fix">
                       <div className="space-y-8">
                         {/* Business Information Section */}
-                        <div className="bg-gray-50 rounded-lg p-6">
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <Users className="mr-2" size={20} />
                             Business Information
@@ -2000,7 +2003,7 @@ const Cars = ({ user, db }) => {
                         </div>
 
                         {/* Basic Vehicle Information Section */}
-                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <Car className="mr-2" size={20} />
                             Basic Vehicle Information
@@ -2146,7 +2149,7 @@ const Cars = ({ user, db }) => {
                         </div>
 
                         {/* Pricing Information Section */}
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <PesoIcon className="mr-2" size={20} />
                             Pricing Information
@@ -2219,7 +2222,7 @@ const Cars = ({ user, db }) => {
                         </div>
 
                         {/* Technical Specifications Section */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <Settings className="mr-2" size={20} />
                             Technical Specifications
@@ -2297,7 +2300,7 @@ const Cars = ({ user, db }) => {
                         </div>
 
                         {/* Description Section */}
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <FileText className="mr-2" size={20} />
                             Additional Information
@@ -2320,7 +2323,7 @@ const Cars = ({ user, db }) => {
                         </div>
                       
                         {/* Images Section - FIXED VERSION */}
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 upload-section-fix">
+                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 upload-section-fix">
                           <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                             <Upload className="mr-2" size={20} />
                             Vehicle Images
@@ -2719,7 +2722,7 @@ const Cars = ({ user, db }) => {
                             <span className="text-gray-900">{carToView.model}</span>
                           </div>
                           <div className="flex items-center">
-                            <span className="font-medium text-gray-700 w-20">Car #:</span>
+                            <span className="font-medium text-gray-700 w-20">Car Number:</span>
                             <span className="text-gray-900">{carToView.carNumber}</span>
                           </div>
                           {carToView.businessPermitNumber && (
@@ -2733,8 +2736,8 @@ const Cars = ({ user, db }) => {
                             <span className="text-gray-900">{carToView.carType}</span>
                           </div>
                           <div className="flex items-center">
-                            <span className="font-medium text-gray-700 w-20">Vehicle #:</span>
-                            <span className="text-gray-900">#{carToView.vehicleNumber}</span>
+                            <span className="font-medium text-gray-700 w-20">Vehicle Number:</span>
+                            <span className="text-gray-900">{carToView.vehicleNumber}</span>
                           </div>
                         </div>
                       </div>

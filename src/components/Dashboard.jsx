@@ -203,11 +203,49 @@ const Dashboard = ({ user }) => {
         }
         
         const totalBookings = bookingsData.length;
-        const activeBookings = bookingsData.filter(b => b.status === 'active' || b.status === 'ongoing').length;
-        const completedBookings = bookingsData.filter(b => b.status === 'completed').length;
-        const cancelledBookings = bookingsData.filter(b => b.status === 'cancelled').length;
-        const overdueBookings = bookingsData.filter(b => b.status === 'overdue').length;
-        const pendingBookings = bookingsData.filter(b => b.status === 'pending').length;
+        
+        // Calculate current status for each booking (same logic as Total Bookings page)
+        const now = new Date();
+        const bookingsWithCurrentStatus = bookingsData.map(booking => {
+          const status = (booking.status || 'pending').toLowerCase();
+          let currentStatus = status;
+          
+          if (status === 'completed') {
+            currentStatus = 'completed';
+          } else if (status === 'cancelled') {
+            currentStatus = 'cancelled';
+          } else if (status === 'confirmed' || status === 'active') {
+            // Check if overdue
+            if (booking.endDate) {
+              const endDate = new Date(booking.endDate);
+              if (endDate < now) {
+                currentStatus = 'overdue';
+              } else {
+                currentStatus = 'active';
+              }
+            } else {
+              currentStatus = 'active';
+            }
+          } else {
+            currentStatus = 'pending';
+          }
+          
+          return { ...booking, currentStatus };
+        });
+        
+        const activeBookings = bookingsWithCurrentStatus.filter(b => b.currentStatus === 'active').length;
+        const completedBookings = bookingsWithCurrentStatus.filter(b => b.currentStatus === 'completed').length;
+        const cancelledBookings = bookingsWithCurrentStatus.filter(b => b.currentStatus === 'cancelled').length;
+        const overdueBookings = bookingsWithCurrentStatus.filter(b => b.currentStatus === 'overdue').length;
+        const pendingBookings = bookingsWithCurrentStatus.filter(b => b.currentStatus === 'pending' || b.currentStatus === 'accepted').length;
+        
+        console.log('📊 Booking Status Counts (with current status logic):');
+        console.log('- Total:', totalBookings);
+        console.log('- Active:', activeBookings);
+        console.log('- Completed:', completedBookings);
+        console.log('- Cancelled:', cancelledBookings);
+        console.log('- Overdue:', overdueBookings);
+        console.log('- Pending:', pendingBookings);
         const totalRevenue = completedBookings > 0 ? bookingsData.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.price || 0), 0) : 0;
         
         // Calculate average rental duration
@@ -453,6 +491,21 @@ const Dashboard = ({ user }) => {
           successRate: totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0
         });
         
+        console.log('✅ Stats updated with booking counts:', {
+          activeBookings,
+          completedBookings,
+          pendingBookings,
+          cancelledBookings,
+          overdueBookings
+        });
+        
+        console.log('📋 Sample booking statuses:', bookingsWithCurrentStatus.slice(0, 5).map(b => ({
+          id: b.id.substring(0, 8),
+          originalStatus: b.status,
+          currentStatus: b.currentStatus,
+          endDate: b.endDate
+        })));
+        
         // Finish loading
         setLoading(false);
         
@@ -514,8 +567,6 @@ const Dashboard = ({ user }) => {
       
       .bg-pattern {
         background-color: #f5f5f5;
-        background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
-        background-size: 20px 20px;
       }
       
       .animate-fadeIn {
@@ -678,7 +729,7 @@ const Dashboard = ({ user }) => {
       
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'ml-0' : 'ml-0 lg:ml-64'}`}>
         {/* Top Bar */}
-        <header className="bg-white shadow-sm z-10">
+        <header className="bg-white shadow-md border-b border-gray-200 z-10">
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center">
               <button 
@@ -820,8 +871,11 @@ const Dashboard = ({ user }) => {
           <div className="container px-4 sm:px-6 py-8 mx-auto">
             {/* Dashboard Header */}
             <div className="mb-8 animate-fadeIn">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Car Rental Dashboard</h2>
-              <p className="text-gray-500">Overview of rental activity and statistics</p>
+              <h1 className="text-4xl font-bold text-gray-900 flex items-center mb-2">
+                Hello, {adminProfile?.name || user?.name || 'Admin'}
+                <span className="ml-3 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full font-medium">Dashboard</span>
+              </h1>
+              <p className="text-gray-600 mt-2 text-lg">Welcome back! Here's what's happening with your car rental system.</p>
             </div>
             
             {loading ? (
@@ -996,28 +1050,35 @@ const Dashboard = ({ user }) => {
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           <span className="text-xs font-medium text-gray-700">Active</span>
                         </div>
-                        <span className="text-sm font-bold text-blue-600">{stats.activeBookings}</span>
+                        <span className="text-sm font-bold text-blue-600">{stats.activeBookings || 0}</span>
                       </div>
                       <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="text-xs font-medium text-gray-700">Completed</span>
                         </div>
-                        <span className="text-sm font-bold text-green-600">{stats.completedBookings}</span>
+                        <span className="text-sm font-bold text-green-600">{stats.completedBookings || 0}</span>
                       </div>
                       <div className="flex items-center justify-between p-2 bg-yellow-50 rounded-lg">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                           <span className="text-xs font-medium text-gray-700">Pending</span>
                         </div>
-                        <span className="text-sm font-bold text-yellow-600">{stats.pendingBookings}</span>
+                        <span className="text-sm font-bold text-yellow-600">{stats.pendingBookings || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                          <span className="text-xs font-medium text-gray-700">Cancelled</span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-600">{stats.cancelledBookings || 0}</span>
                       </div>
                       <div className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                           <span className="text-xs font-medium text-gray-700">Overdue</span>
                         </div>
-                        <span className="text-sm font-bold text-red-600">{stats.overdueBookings}</span>
+                        <span className="text-sm font-bold text-red-600">{stats.overdueBookings || 0}</span>
                       </div>
                     </div>
                   </div>

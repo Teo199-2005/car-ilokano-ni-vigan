@@ -1063,7 +1063,7 @@ const RentalReports = ({ user, db: propDb }) => {
       
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'ml-0' : 'ml-0 lg:ml-64'}`}>
         {/* Top Bar */}
-        <header className="bg-white shadow-sm z-10">
+        <header className="bg-white shadow-md border-b border-gray-200 z-10">
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center">
               <button 
